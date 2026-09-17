@@ -2,46 +2,73 @@ import { useState } from "react";
 
 function DataUpload() {
   const [selectedFile, setSelectedFile] = useState(null);
+  const [message, setMessage] = useState("");
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
 
-    if (file) {
-      setSelectedFile(file);
+    if (!file) {
+      return;
     }
+
+    if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
+      setMessage("Please select a CSV file.");
+      setSelectedFile(null);
+      return;
+    }
+
+    setSelectedFile(file);
+    setMessage("");
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setMessage("");
   };
 
   const handleUpload = () => {
     if (!selectedFile) {
-      alert("Please select a CSV file first.");
+      setMessage("Please select a CSV file before uploading.");
       return;
     }
 
-    alert(`Selected file: ${selectedFile.name}`);
+    setMessage(
+      `File "${selectedFile.name}" is ready for upload.`
+    );
   };
 
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Data Upload</h1>
+        <h1>Historical Campaign Data</h1>
 
         <p>
           Upload historical marketing campaign data for
-          causal analysis.
+          causal analysis and treatment effect estimation.
         </p>
       </div>
 
       <div className="form-card">
-        <h2>Historical Campaign Dataset</h2>
+        <h2>Upload Dataset</h2>
 
         <p className="form-description">
-          Select a CSV file containing historical campaign
-          information.
+          Upload your historical campaign data in CSV format.
         </p>
 
-        <div className="file-input-container">
-          <label htmlFor="campaign-file">
-            Select CSV File
+        <div className="upload-area">
+          <div className="upload-icon">📁</div>
+
+          <h3>Select your CSV file</h3>
+
+          <p>
+            Supported format: CSV
+          </p>
+
+          <label
+            htmlFor="campaign-file"
+            className="file-select-button"
+          >
+            Choose File
           </label>
 
           <input
@@ -49,30 +76,59 @@ function DataUpload() {
             type="file"
             accept=".csv"
             onChange={handleFileChange}
+            hidden
           />
         </div>
 
         {selectedFile && (
-          <div className="file-info">
-            Selected file: <strong>{selectedFile.name}</strong>
+          <div className="selected-file-card">
+            <div>
+              <strong>{selectedFile.name}</strong>
+
+              <p>
+                {(selectedFile.size / 1024).toFixed(2)} KB
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="remove-button"
+              onClick={handleRemoveFile}
+            >
+              Remove
+            </button>
           </div>
         )}
 
-        <button onClick={handleUpload}>
+        {message && (
+          <div className="upload-message">
+            {message}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={handleUpload}
+          disabled={!selectedFile}
+        >
           Upload Dataset
         </button>
       </div>
 
       <div className="info-card">
-        <h3>Expected Dataset</h3>
+        <h3>Expected Dataset Information</h3>
 
         <p>
-          The historical dataset will later contain campaign,
-          treatment, outcome and customer feature information.
+          The historical campaign dataset will later contain
+          information required for causal machine learning.
         </p>
 
-        <div className="code-example">
-          customer_id, treatment, revenue, age, previous_spend
+        <div className="dataset-fields">
+          <span>Customer ID</span>
+          <span>Treatment</span>
+          <span>Revenue</span>
+          <span>Customer Features</span>
+          <span>Campaign Features</span>
         </div>
       </div>
     </div>
