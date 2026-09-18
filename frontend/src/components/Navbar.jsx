@@ -10,6 +10,8 @@ function Navbar() {
           Causal ML + Budget Optimization
         </p>
       </div>
+
+      
     </header>
   );
 }
