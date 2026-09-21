@@ -3,8 +3,6 @@ import { NavLink } from "react-router-dom";
 function Sidebar() {
   return (
     <aside className="sidebar">
-      <h2 className="sidebar-title">Navigation</h2>
-
       <nav className="sidebar-nav">
         <NavLink to="/" end>
           Dashboard
@@ -16,6 +14,10 @@ function Sidebar() {
 
         <NavLink to="/budget">
           Budget Input
+        </NavLink>
+
+        <NavLink to="/visualizations">
+          Visualizations
         </NavLink>
       </nav>
     </aside>
