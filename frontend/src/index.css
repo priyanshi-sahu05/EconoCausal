@@ -450,3 +450,32 @@ padding: 0 20px;
 display: none;
 }
 }
+.chart-container {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.chart-card {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.chart-header {
+  margin-bottom: 10px;
+}
+
+.chart-header h2 {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+.chart-header p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
+}

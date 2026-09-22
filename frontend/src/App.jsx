@@ -17,9 +17,21 @@ function App() {
         <main className="content">
           <Routes>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/upload" element={<DataUpload />} />
-            <Route path="/budget" element={<BudgetInput />} />
-            <Route path="/visualizations" element={<Visualizations />} />
+
+            <Route
+              path="/upload"
+              element={<DataUpload />}
+            />
+
+            <Route
+              path="/budget"
+              element={<BudgetInput />}
+            />
+
+            <Route
+              path="/visualizations"
+              element={<Visualizations />}
+            />
           </Routes>
         </main>
       </div>

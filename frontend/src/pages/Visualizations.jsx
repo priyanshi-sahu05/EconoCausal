@@ -8,7 +8,7 @@ function Visualizations() {
         <h1>Marketing Visualizations</h1>
 
         <p>
-          Visualize causal marketing performance using Qini
+          Analyze causal marketing performance using Qini
           and uplift analysis.
         </p>
       </div>

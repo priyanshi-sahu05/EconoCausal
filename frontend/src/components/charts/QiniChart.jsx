@@ -1,28 +1,43 @@
 import Plot from "react-plotly.js";
 
 function QiniChart() {
-  const xValues = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  const targetedCustomers = [
+    0, 10, 20, 30, 40, 50,
+    60, 70, 80, 90, 100
+  ];
 
-  const modelValues = [0, 8, 17, 27, 38, 50, 61, 71, 80, 88, 95];
+  const causalModel = [
+    0, 8, 18, 30, 43, 57,
+    70, 82, 92, 99, 104
+  ];
 
-  const randomValues = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+  const randomBaseline = [
+    0, 5, 10, 15, 20, 25,
+    30, 35, 40, 45, 50
+  ];
 
   return (
     <div className="chart-card">
-      <h2>Qini Curve</h2>
+      <div className="chart-header">
+        <h2>Qini Curve</h2>
+        <p>
+          Measures the cumulative incremental gain from
+          targeting customers using the causal model.
+        </p>
+      </div>
 
       <Plot
         data={[
           {
-            x: xValues,
-            y: modelValues,
+            x: targetedCustomers,
+            y: causalModel,
             type: "scatter",
-            mode: "lines",
+            mode: "lines+markers",
             name: "Causal Model"
           },
           {
-            x: xValues,
-            y: randomValues,
+            x: targetedCustomers,
+            y: randomBaseline,
             type: "scatter",
             mode: "lines",
             name: "Random Baseline"
@@ -31,18 +46,32 @@ function QiniChart() {
         layout={{
           title: "Qini Curve",
           xaxis: {
-            title: "Targeted Customers (%)"
+            title: "Targeted Customers (%)",
+            range: [0, 100]
           },
           yaxis: {
-            title: "Cumulative Gain"
+            title: "Cumulative Incremental Gain"
           },
-          autosize: true
+          hovermode: "x unified",
+          margin: {
+            l: 70,
+            r: 30,
+            t: 70,
+            b: 70
+          },
+          legend: {
+            orientation: "h"
+          }
         }}
         style={{
           width: "100%",
           height: "450px"
         }}
         useResizeHandler={true}
+        config={{
+          responsive: true,
+          displaylogo: false
+        }}
       />
     </div>
   );

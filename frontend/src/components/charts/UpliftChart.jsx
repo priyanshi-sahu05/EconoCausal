@@ -1,28 +1,43 @@
 import Plot from "react-plotly.js";
 
 function UpliftChart() {
-  const xValues = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  const targetedCustomers = [
+    0, 10, 20, 30, 40, 50,
+    60, 70, 80, 90, 100
+  ];
 
-  const modelValues = [0, 42, 36, 31, 27, 23, 19, 15, 11, 7, 3];
+  const causalModel = [
+    0, 44, 39, 34, 30, 26,
+    22, 18, 14, 9, 4
+  ];
 
-  const randomValues = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const randomBaseline = [
+    0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0
+  ];
 
   return (
     <div className="chart-card">
-      <h2>Uplift Curve</h2>
+      <div className="chart-header">
+        <h2>Uplift Curve</h2>
+        <p>
+          Shows the estimated incremental response from
+          targeting customers with the marketing treatment.
+        </p>
+      </div>
 
       <Plot
         data={[
           {
-            x: xValues,
-            y: modelValues,
+            x: targetedCustomers,
+            y: causalModel,
             type: "scatter",
-            mode: "lines",
+            mode: "lines+markers",
             name: "Causal Model"
           },
           {
-            x: xValues,
-            y: randomValues,
+            x: targetedCustomers,
+            y: randomBaseline,
             type: "scatter",
             mode: "lines",
             name: "Random Baseline"
@@ -31,18 +46,32 @@ function UpliftChart() {
         layout={{
           title: "Uplift Curve",
           xaxis: {
-            title: "Targeted Customers (%)"
+            title: "Targeted Customers (%)",
+            range: [0, 100]
           },
           yaxis: {
             title: "Uplift Score"
           },
-          autosize: true
+          hovermode: "x unified",
+          margin: {
+            l: 70,
+            r: 30,
+            t: 70,
+            b: 70
+          },
+          legend: {
+            orientation: "h"
+          }
         }}
         style={{
           width: "100%",
           height: "450px"
         }}
         useResizeHandler={true}
+        config={{
+          responsive: true,
+          displaylogo: false
+        }}
       />
     </div>
   );
