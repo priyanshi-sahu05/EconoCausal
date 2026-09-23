@@ -1,28 +1,20 @@
 import Plot from "react-plotly.js";
+import { prepareUpliftData } from "../../utils/causalMetrics";
 
-function UpliftChart() {
-  const targetedCustomers = [
-    0, 10, 20, 30, 40, 50,
-    60, 70, 80, 90, 100
-  ];
-
-  const causalModel = [
-    0, 44, 39, 34, 30, 26,
-    22, 18, 14, 9, 4
-  ];
-
-  const randomBaseline = [
-    0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0
-  ];
+function UpliftChart({ results }) {
+  const {
+    targetedCustomers,
+    upliftValues
+  } = prepareUpliftData(results);
 
   return (
     <div className="chart-card">
       <div className="chart-header">
         <h2>Uplift Curve</h2>
+
         <p>
-          Shows the estimated incremental response from
-          targeting customers with the marketing treatment.
+          Cumulative uplift obtained by targeting
+          customers with higher predicted treatment effects.
         </p>
       </div>
 
@@ -30,14 +22,14 @@ function UpliftChart() {
         data={[
           {
             x: targetedCustomers,
-            y: causalModel,
+            y: upliftValues,
             type: "scatter",
             mode: "lines+markers",
             name: "Causal Model"
           },
           {
-            x: targetedCustomers,
-            y: randomBaseline,
+            x: [0, 100],
+            y: [0, 0],
             type: "scatter",
             mode: "lines",
             name: "Random Baseline"
@@ -50,7 +42,7 @@ function UpliftChart() {
             range: [0, 100]
           },
           yaxis: {
-            title: "Uplift Score"
+            title: "Cumulative Uplift"
           },
           hovermode: "x unified",
           margin: {

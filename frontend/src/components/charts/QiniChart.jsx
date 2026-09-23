@@ -1,28 +1,22 @@
 import Plot from "react-plotly.js";
+import { prepareQiniData } from "../../utils/causalMetrics";
 
-function QiniChart() {
-  const targetedCustomers = [
-    0, 10, 20, 30, 40, 50,
-    60, 70, 80, 90, 100
-  ];
-
-  const causalModel = [
-    0, 8, 18, 30, 43, 57,
-    70, 82, 92, 99, 104
-  ];
-
-  const randomBaseline = [
-    0, 5, 10, 15, 20, 25,
-    30, 35, 40, 45, 50
-  ];
+function QiniChart({ results }) {
+  const {
+    targetedCustomers,
+    qiniValues,
+    randomBaseline
+  } = prepareQiniData(results);
 
   return (
     <div className="chart-card">
       <div className="chart-header">
         <h2>Qini Curve</h2>
+
         <p>
-          Measures the cumulative incremental gain from
-          targeting customers using the causal model.
+          Cumulative incremental gain obtained by
+          targeting customers according to predicted
+          treatment effect.
         </p>
       </div>
 
@@ -30,7 +24,7 @@ function QiniChart() {
         data={[
           {
             x: targetedCustomers,
-            y: causalModel,
+            y: qiniValues,
             type: "scatter",
             mode: "lines+markers",
             name: "Causal Model"
