@@ -1,10 +1,16 @@
 import QiniChart from "../components/charts/QiniChart";
 import UpliftChart from "../components/charts/UpliftChart";
 import modelResults from "../data/modelResults";
-import { calculateMetrics } from "../utils/causalMetrics";
+import {
+  calculateMetrics,
+  calculateComparison
+} from "../utils/causalMetrics";
 
 function Visualizations() {
   const metrics = calculateMetrics(modelResults);
+
+  const comparison =
+    calculateComparison(modelResults);
 
   return (
     <div className="page">
@@ -12,8 +18,8 @@ function Visualizations() {
         <h1>Marketing Visualizations</h1>
 
         <p>
-          Analyze causal marketing performance using
-          treatment effect and uplift analysis.
+          Analyze causal marketing performance and compare
+          targeted treatment against random rollout.
         </p>
       </div>
 
@@ -43,6 +49,47 @@ function Visualizations() {
         <QiniChart results={modelResults} />
 
         <UpliftChart results={modelResults} />
+      </div>
+
+      <div className="comparison-card">
+        <div className="comparison-header">
+          <h2>Campaign Comparison</h2>
+
+          <p>
+            Summary of customers with positive estimated
+            treatment effects.
+          </p>
+        </div>
+
+        <div className="comparison-grid">
+          <div>
+            <span>Customers with Positive ITE</span>
+            <strong>
+              {metrics.positiveITECount}
+            </strong>
+          </div>
+
+          <div>
+            <span>Targetable Customer Share</span>
+            <strong>
+              {comparison.targetedPercentage}%
+            </strong>
+          </div>
+
+          <div>
+            <span>Total Positive ITE</span>
+            <strong>
+              {comparison.totalPositiveITE}
+            </strong>
+          </div>
+
+          <div>
+            <span>Average Positive ITE</span>
+            <strong>
+              {comparison.averagePositiveITE}
+            </strong>
+          </div>
+        </div>
       </div>
     </div>
   );

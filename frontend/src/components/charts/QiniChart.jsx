@@ -14,9 +14,8 @@ function QiniChart({ results }) {
         <h2>Qini Curve</h2>
 
         <p>
-          Cumulative incremental gain obtained by
-          targeting customers according to predicted
-          treatment effect.
+          Compares cumulative incremental gain from
+          targeted marketing against a random rollout.
         </p>
       </div>
 
@@ -34,11 +33,11 @@ function QiniChart({ results }) {
             y: randomBaseline,
             type: "scatter",
             mode: "lines",
-            name: "Random Baseline"
+            name: "Random Rollout"
           }
         ]}
         layout={{
-          title: "Qini Curve",
+          title: "Causal Model vs Random Rollout",
           xaxis: {
             title: "Targeted Customers (%)",
             range: [0, 100]

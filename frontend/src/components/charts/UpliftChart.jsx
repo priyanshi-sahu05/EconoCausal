@@ -13,8 +13,8 @@ function UpliftChart({ results }) {
         <h2>Uplift Curve</h2>
 
         <p>
-          Cumulative uplift obtained by targeting
-          customers with higher predicted treatment effects.
+          Shows cumulative uplift from targeted customers
+          compared with a random rollout.
         </p>
       </div>
 
@@ -32,11 +32,11 @@ function UpliftChart({ results }) {
             y: [0, 0],
             type: "scatter",
             mode: "lines",
-            name: "Random Baseline"
+            name: "Random Rollout"
           }
         ]}
         layout={{
-          title: "Uplift Curve",
+          title: "Causal Model vs Random Rollout",
           xaxis: {
             title: "Targeted Customers (%)",
             range: [0, 100]
