@@ -21,8 +21,13 @@ export function prepareUpliftData(results) {
     const percentage =
       ((index + 1) / sortedResults.length) * 100;
 
-    targetedCustomers.push(Number(percentage.toFixed(2)));
-    upliftValues.push(Number(cumulativeUplift.toFixed(4)));
+    targetedCustomers.push(
+      Number(percentage.toFixed(2))
+    );
+
+    upliftValues.push(
+      Number(cumulativeUplift.toFixed(4))
+    );
   });
 
   return {
@@ -55,16 +60,25 @@ export function prepareQiniData(results) {
     const percentage =
       ((index + 1) / sortedResults.length) * 100;
 
-    targetedCustomers.push(Number(percentage.toFixed(2)));
-    qiniValues.push(Number(cumulativeGain.toFixed(4)));
+    targetedCustomers.push(
+      Number(percentage.toFixed(2))
+    );
+
+    qiniValues.push(
+      Number(cumulativeGain.toFixed(4))
+    );
   });
 
-  const totalGain = qiniValues[qiniValues.length - 1];
+  const totalGain =
+    qiniValues[qiniValues.length - 1];
 
   const randomBaseline = targetedCustomers.map(
     (percentage) =>
       Number(
-        ((percentage / 100) * totalGain).toFixed(4)
+        (
+          (percentage / 100) *
+          totalGain
+        ).toFixed(4)
       )
   );
 
@@ -96,23 +110,31 @@ export function calculateMetrics(results) {
       0
     ) / iteValues.length;
 
-  const positiveITECount = iteValues.filter(
-    (value) => value > 0
-  ).length;
+  const positiveITECount =
+    iteValues.filter(
+      (value) => value > 0
+    ).length;
 
-  const negativeITECount = iteValues.filter(
-    (value) => value < 0
-  ).length;
+  const negativeITECount =
+    iteValues.filter(
+      (value) => value < 0
+    ).length;
 
   const maximumITE = Math.max(...iteValues);
   const minimumITE = Math.min(...iteValues);
 
   return {
-    averageITE: Number(averageITE.toFixed(3)),
+    averageITE: Number(
+      averageITE.toFixed(3)
+    ),
     positiveITECount,
     negativeITECount,
-    maximumITE: Number(maximumITE.toFixed(3)),
-    minimumITE: Number(minimumITE.toFixed(3))
+    maximumITE: Number(
+      maximumITE.toFixed(3)
+    ),
+    minimumITE: Number(
+      minimumITE.toFixed(3)
+    )
   };
 }
 
@@ -125,23 +147,27 @@ export function calculateComparison(results) {
     };
   }
 
-  const positiveCustomers = results.filter(
-    (customer) => customer.ite > 0
-  );
-
-  const totalCustomers = results.length;
+  const positiveCustomers =
+    results.filter(
+      (customer) => customer.ite > 0
+    );
 
   const targetedPercentage =
-    (positiveCustomers.length / totalCustomers) * 100;
+    (positiveCustomers.length /
+      results.length) *
+    100;
 
-  const totalPositiveITE = positiveCustomers.reduce(
-    (sum, customer) => sum + customer.ite,
-    0
-  );
+  const totalPositiveITE =
+    positiveCustomers.reduce(
+      (sum, customer) =>
+        sum + customer.ite,
+      0
+    );
 
   const averagePositiveITE =
     positiveCustomers.length > 0
-      ? totalPositiveITE / positiveCustomers.length
+      ? totalPositiveITE /
+        positiveCustomers.length
       : 0;
 
   return {

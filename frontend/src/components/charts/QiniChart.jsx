@@ -1,12 +1,26 @@
 import Plot from "react-plotly.js";
 import { prepareQiniData } from "../../utils/causalMetrics";
+import { sampleResults } from "../../utils/chartData";
 
 function QiniChart({ results }) {
+  const chartResults = sampleResults(results, 1000);
+
   const {
     targetedCustomers,
     qiniValues,
     randomBaseline
-  } = prepareQiniData(results);
+  } = prepareQiniData(chartResults);
+
+  if (!results || results.length === 0) {
+    return (
+      <div className="chart-card">
+        <div className="chart-header">
+          <h2>Qini Curve</h2>
+          <p>No data available for the selected filters.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="chart-card">
@@ -17,6 +31,16 @@ function QiniChart({ results }) {
           Compares cumulative incremental gain from
           targeted marketing against a random rollout.
         </p>
+
+        {results.length > 1000 && (
+          <span className="chart-performance-note">
+            Showing a representative sample of{" "}
+            {chartResults.length.toLocaleString()}{" "}
+            points from{" "}
+            {results.length.toLocaleString()}{" "}
+            customers.
+          </span>
+        )}
       </div>
 
       <Plot
@@ -25,7 +49,7 @@ function QiniChart({ results }) {
             x: targetedCustomers,
             y: qiniValues,
             type: "scatter",
-            mode: "lines+markers",
+            mode: "lines",
             name: "Causal Model"
           },
           {

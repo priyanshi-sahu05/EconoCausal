@@ -10,11 +10,14 @@ import {
 
 function Visualizations() {
   const [minITE, setMinITE] = useState("");
-  const [customerType, setCustomerType] = useState("all");
+  const [customerType, setCustomerType] =
+    useState("all");
 
   const filteredResults = useMemo(() => {
     const minimumITE =
-      minITE === "" ? -Infinity : Number(minITE);
+      minITE === ""
+        ? -Infinity
+        : Number(minITE);
 
     return modelResults.filter((customer) => {
       const matchesITE =
@@ -72,7 +75,9 @@ function Visualizations() {
 
         <div className="metric-card">
           <h3>Positive ITE Customers</h3>
-          <strong>{metrics.positiveITECount}</strong>
+          <strong>
+            {metrics.positiveITECount.toLocaleString()}
+          </strong>
         </div>
 
         <div className="metric-card">
@@ -105,6 +110,7 @@ function Visualizations() {
         <div className="comparison-grid">
           <div>
             <span>Targeted Customers</span>
+
             <strong>
               {comparison.targetedPercentage}%
             </strong>
@@ -112,6 +118,7 @@ function Visualizations() {
 
           <div>
             <span>Total Positive ITE</span>
+
             <strong>
               {comparison.totalPositiveITE}
             </strong>
@@ -119,6 +126,7 @@ function Visualizations() {
 
           <div>
             <span>Average Positive ITE</span>
+
             <strong>
               {comparison.averagePositiveITE}
             </strong>
@@ -132,6 +140,7 @@ function Visualizations() {
         <div className="info-grid">
           <div>
             <h3>ITE</h3>
+
             <p>
               Individual Treatment Effect estimates
               the expected impact of a treatment for
@@ -141,23 +150,26 @@ function Visualizations() {
 
           <div>
             <h3>Qini Curve</h3>
+
             <p>
               Shows cumulative incremental gain when
-              customers are targeted according to their
-              estimated treatment effect.
+              customers are targeted according to
+              their estimated treatment effect.
             </p>
           </div>
 
           <div>
             <h3>Uplift Curve</h3>
+
             <p>
-              Shows the cumulative uplift obtained by
+              Shows cumulative uplift obtained by
               prioritizing customers based on their ITE.
             </p>
           </div>
 
           <div>
             <h3>Random Rollout</h3>
+
             <p>
               Provides a baseline representing customer
               targeting without causal prioritization.

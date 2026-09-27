@@ -10,6 +10,7 @@ function ITEFilter({
     <div className="filter-card">
       <div className="filter-header">
         <h2>ITE Filters</h2>
+
         <p>
           Filter customers based on their estimated
           individual treatment effect.
@@ -64,9 +65,13 @@ function ITEFilter({
 
       <div className="filter-result">
         Showing{" "}
-        <strong>{filteredCustomers}</strong>{" "}
+        <strong>
+          {filteredCustomers.toLocaleString()}
+        </strong>{" "}
         of{" "}
-        <strong>{totalCustomers}</strong>{" "}
+        <strong>
+          {totalCustomers.toLocaleString()}
+        </strong>{" "}
         customers
       </div>
     </div>
