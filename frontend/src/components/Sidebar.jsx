@@ -19,6 +19,9 @@ function Sidebar() {
         <NavLink to="/visualizations">
           Visualizations
         </NavLink>
+        <NavLink to="/allocation" className="sidebar-link">
+          <span>Allocation Matrix</span>
+        </NavLink>
       </nav>
     </aside>
   );

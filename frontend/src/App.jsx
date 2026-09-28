@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import DataUpload from "./pages/DataUpload";
 import BudgetInput from "./pages/BudgetInput";
 import Visualizations from "./pages/Visualizations";
+import AllocationMatrix from "./pages/AllocationMatrix";
 
 function App() {
   return (
@@ -31,6 +32,11 @@ function App() {
             <Route
               path="/visualizations"
               element={<Visualizations />}
+            />
+
+            <Route
+              path="/allocation"
+              element={<AllocationMatrix />}
             />
           </Routes>
         </main>
