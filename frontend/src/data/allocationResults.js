@@ -11,24 +11,20 @@ const allocationResults = Array.from(
       ).toFixed(3)
     );
 
-    const treatment = customerNumber % 2 === 0 ? 1 : 0;
-
     const recommendedDiscount =
       ite >= 0.5 ? 20 :
       ite >= 0.3 ? 15 :
       ite > 0 ? 10 : 0;
 
-    const estimatedCost = Number(
-      (recommendedDiscount * 10).toFixed(2)
-    );
+    const estimatedCost = recommendedDiscount * 10;
 
     return {
       customerId: `C${String(customerNumber).padStart(5, "0")}`,
       ite,
-      treatment,
       recommendedDiscount,
       estimatedCost,
-      eligible: ite > 0
+      eligible: ite > 0,
+      selected: ite > 0
     };
   }
 );

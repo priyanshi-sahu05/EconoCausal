@@ -932,3 +932,56 @@ display: none;
     padding: 18px;
   }
 }
+.prescription-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 24px 16px;
+}
+
+.prescription-actions button {
+  padding: 10px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.prescription-actions button:hover {
+  background: #f1f5f9;
+}
+
+.discount-input {
+  width: 85px;
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  font-size: 13px;
+}
+
+.discount-input:focus {
+  outline: 2px solid #bfdbfe;
+  border-color: #3b82f6;
+}
+
+.allocation-table input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .prescription-actions {
+    padding: 0 18px 16px;
+  }
+
+  .prescription-actions button {
+    width: 100%;
+  }
+}
