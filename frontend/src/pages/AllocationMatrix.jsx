@@ -1,12 +1,12 @@
+
 import { useMemo, useState } from "react";
 import allocationResults from "../data/allocationResults";
+import PrescriptionSummary from "../components/PrescriptionSummary";
 
 function AllocationMatrix() {
   const [searchTerm, setSearchTerm] = useState("");
   const [eligibilityFilter, setEligibilityFilter] = useState("all");
-  const [prescriptions, setPrescriptions] = useState(
-    allocationResults
-  );
+  const [prescriptions, setPrescriptions] = useState(allocationResults);
 
   const filteredResults = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -38,7 +38,7 @@ function AllocationMatrix() {
     return {
       totalCustomers: prescriptions.length,
       selectedCustomers: selectedCustomers.length,
-      totalEstimatedCost
+      totalEstimatedCost,
     };
   }, [prescriptions]);
 
@@ -46,7 +46,7 @@ function AllocationMatrix() {
     new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-      maximumFractionDigits: 2
+      maximumFractionDigits: 2,
     }).format(value);
 
   const toggleSelection = (customerId) => {
@@ -60,6 +60,10 @@ function AllocationMatrix() {
   };
 
   const updateDiscount = (customerId, discountValue) => {
+    if (discountValue === "") {
+      return;
+    }
+
     const discount = Number(discountValue);
 
     if (!Number.isFinite(discount) || discount < 0 || discount > 100) {
@@ -73,7 +77,7 @@ function AllocationMatrix() {
               ...customer,
               recommendedDiscount: discount,
               estimatedCost: discount * 10,
-              selected: discount > 0
+              selected: discount > 0,
             }
           : customer
       )
@@ -84,7 +88,7 @@ function AllocationMatrix() {
     setPrescriptions((previous) =>
       previous.map((customer) => ({
         ...customer,
-        selected: customer.eligible
+        selected: customer.eligible,
       }))
     );
   };
@@ -93,7 +97,7 @@ function AllocationMatrix() {
     setPrescriptions((previous) =>
       previous.map((customer) => ({
         ...customer,
-        selected: false
+        selected: false,
       }))
     );
   };
@@ -111,12 +115,12 @@ function AllocationMatrix() {
       <div className="allocation-summary">
         <div className="allocation-summary-card">
           <span>Total Customers</span>
-          <strong>{summary.totalCustomers}</strong>
+          <strong>{summary.totalCustomers.toLocaleString("en-IN")}</strong>
         </div>
 
         <div className="allocation-summary-card">
           <span>Selected Customers</span>
-          <strong>{summary.selectedCustomers}</strong>
+          <strong>{summary.selectedCustomers.toLocaleString("en-IN")}</strong>
         </div>
 
         <div className="allocation-summary-card">
@@ -127,10 +131,13 @@ function AllocationMatrix() {
         <div className="allocation-summary-card">
           <span>Unselected Customers</span>
           <strong>
-            {summary.totalCustomers - summary.selectedCustomers}
+            {(summary.totalCustomers - summary.selectedCustomers)
+              .toLocaleString("en-IN")}
           </strong>
         </div>
       </div>
+
+      <PrescriptionSummary prescriptions={prescriptions} />
 
       <div className="allocation-table-card">
         <div className="allocation-table-header">
@@ -175,7 +182,8 @@ function AllocationMatrix() {
         </div>
 
         <div className="allocation-result-count">
-          Showing {filteredResults.length} of {summary.totalCustomers} customers
+          Showing {filteredResults.length.toLocaleString("en-IN")} of{" "}
+          {summary.totalCustomers.toLocaleString("en-IN")} customers
         </div>
 
         <div className="allocation-table-wrapper">
