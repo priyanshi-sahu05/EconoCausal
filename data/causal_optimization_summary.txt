@@ -1,0 +1,5 @@
+EconoCausal Integration Summary
+========================================
+Total customers: 20
+Average optimal discount: 10.87
+Total predicted revenue: 80111.57
