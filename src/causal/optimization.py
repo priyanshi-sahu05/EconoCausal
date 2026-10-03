@@ -1,109 +1,67 @@
-import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
-from scipy.optimize import minimize_scalar
 
-# Load mock retail data
-data = pd.read_csv("data/retail_data.csv")
+# Load optimization results
+results = pd.read_csv("data/optimization_results.csv")
 
-print("Data loaded successfully!")
-print("Dataset shape:", data.shape)
+print("Optimization results loaded successfully!")
+print("Customers:", len(results))
 
-# Features used by the revenue model
-features = [
-    "age",
-    "income",
-    "past_purchase",
-    "product_price"
-]
+# Marketing budget
+BUDGET = 100
 
-X = data[features]
-y = data["revenue"]
+# Maximum discount allowed per customer
+MAX_DISCOUNT = 20
 
-# Train revenue prediction model
-model = RandomForestRegressor(
-    n_estimators=100,
-    random_state=42,
-    n_jobs=-1
-)
+# Sort customers by predicted revenue
+results = results.sort_values(
+    by="predicted_revenue",
+    ascending=False
+).reset_index(drop=True)
 
-model.fit(X, y)
+# Assign personalized discounts under budget
+remaining_budget = BUDGET
+assigned_discounts = []
 
-print("Revenue prediction model trained successfully!")
+for _, row in results.iterrows():
 
-
-# Predict revenue for a given customer and discount
-def predict_revenue(customer_features, discount):
-    customer = customer_features.copy()
-
-    # Discount affects the effective price
-    customer["product_price"] = max(
-        0,
-        customer["product_price"] - discount
+    requested_discount = min(
+        row["optimal_discount"],
+        MAX_DISCOUNT
     )
 
-    input_data = pd.DataFrame([customer])[features]
+    if remaining_budget >= requested_discount:
+        discount = requested_discount
+    else:
+        discount = max(0, remaining_budget)
 
-    return float(model.predict(input_data)[0])
+    assigned_discounts.append(round(discount, 2))
+    remaining_budget -= discount
 
+results["assigned_discount"] = assigned_discounts
 
-# Optimize discount for one customer
-def optimize_discount(customer_features, max_discount=20):
-
-    def objective(discount):
-        revenue = predict_revenue(customer_features, discount)
-
-        # We maximize revenue
-        return -revenue
-
-    result = minimize_scalar(
-        objective,
-        bounds=(0, max_discount),
-        method="bounded",
-        options={"xatol": 0.5}
-    )
-
-    return round(float(result.x), 2), round(float(-result.fun), 2)
-
-
-# Run optimization for a small sample
-# This keeps the demonstration fast.
-sample = data.head(20).copy()
-
-results = []
-
-for _, row in sample.iterrows():
-
-    customer_features = row[features].to_dict()
-
-    optimal_discount, predicted_revenue = optimize_discount(
-        customer_features
-    )
-
-    results.append({
-        "customer_id": row.get("customer_id", len(results) + 1),
-        "optimal_discount": optimal_discount,
-        "predicted_revenue": predicted_revenue
-    })
-
-
-results_df = pd.DataFrame(results)
-
-print("\nOptimization completed successfully!")
-
-print("\nOptimal Discount Results:")
-print(results_df)
-
-print("\nAverage Optimal Discount:")
-print(round(results_df["optimal_discount"].mean(), 2))
-
-print("\nTotal Predicted Revenue:")
-print(round(results_df["predicted_revenue"].sum(), 2))
-
-# Save optimization results
-results_df.to_csv(
-    "data/optimization_results.csv",
+# Save final allocation
+results.to_csv(
+    "data/personalized_discount_allocation.csv",
     index=False
 )
 
-print("\nResults saved to data/optimization_results.csv")
+print("\nPersonalized discount allocation completed!")
+print("Marketing budget:", BUDGET)
+print("Budget used:", round(results["assigned_discount"].sum(), 2))
+print("Budget remaining:", round(remaining_budget, 2))
+
+print("\nFinal Discount Allocation:")
+print(
+    results[
+        [
+            "customer_id",
+            "assigned_discount",
+            "predicted_revenue"
+        ]
+    ]
+)
+
+print(
+    "\nResults saved to "
+    "data/personalized_discount_allocation.csv"
+)
