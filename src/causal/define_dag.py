@@ -2,33 +2,25 @@ import pandas as pd
 from dowhy import CausalModel
 
 # Load mock retail dataset
-data = pd.read_csv("data/retail_data.csv")
+df = pd.read_csv("data/retail_data.csv")
 
-# Define causal variables
-treatment = "discount"
-outcome = "revenue"
-
-# Confounders:
-# These variables can influence both the discount offered
-# and the customer's revenue.
-confounders = [
-    "age",
-    "income",
-    "past_purchase",
-    "product_price"
-]
+print("Dataset loaded successfully")
+print("Shape:", df.shape)
+print("Columns:", list(df.columns))
 
 # Causal DAG
-causal_graph = """
+graph = """
 digraph {
     age -> discount;
-    income -> discount;
-    past_purchase -> discount;
-    product_price -> discount;
-
     age -> revenue;
+
+    income -> discount;
     income -> revenue;
+
+    past_purchase -> discount;
     past_purchase -> revenue;
+
+    product_price -> discount;
     product_price -> revenue;
 
     discount -> revenue;
@@ -37,23 +29,13 @@ digraph {
 
 # Create DoWhy causal model
 model = CausalModel(
-    data=data,
-    treatment=treatment,
-    outcome=outcome,
-    graph=causal_graph
+    data=df,
+    treatment="discount",
+    outcome="revenue",
+    graph=graph
 )
 
-print("Causal model created successfully!")
-print()
-print("Treatment:", treatment)
-print("Outcome:", outcome)
-print("Confounders:", confounders)
-print()
-print("Causal DAG:")
-print(causal_graph)
-
-# Identify the causal effect
-identified_estimand = model.identify_effect()
-
-print("Identified causal estimand:")
-print(identified_estimand)
+print("\nCausal model created successfully!")
+print("Treatment: discount")
+print("Outcome: revenue")
+print("Confounders: age, income, past_purchase, product_price")
