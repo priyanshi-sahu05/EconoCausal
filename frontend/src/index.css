@@ -1295,3 +1295,36 @@ display: none;
     grid-template-columns: 1fr;
   }
 }
+.final-review-card {
+  margin-top: 24px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.final-review-card h2 {
+  margin: 0 0 18px;
+}
+
+.final-status-list {
+  display: grid;
+  gap: 12px;
+}
+
+.final-status-list > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.final-status-list span {
+  color: #475569;
+}
+
+.final-status-list strong {
+  font-size: 13px;
+}

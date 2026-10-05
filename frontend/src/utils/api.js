@@ -1,34 +1,26 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
-export async function checkBackendHealth() {
-  const response = await fetch(`${API_BASE_URL}/health`);
+async function request(endpoint, errorMessage) {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`);
 
   if (!response.ok) {
-    throw new Error("Backend health check failed");
+    throw new Error(errorMessage);
   }
 
   return response.json();
 }
 
-export async function fetchPredictions() {
-  const response = await fetch(`${API_BASE_URL}/predict`);
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch predictions");
-  }
-
-  return response.json();
+export function checkBackendHealth() {
+  return request("/health", "Backend health check failed");
 }
 
-export async function fetchAllocationResults() {
-  const response = await fetch(`${API_BASE_URL}/allocation`);
+export function fetchPredictions() {
+  return request("/predict", "Failed to fetch predictions");
+}
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch allocation results");
-  }
-
-  return response.json();
+export function fetchAllocationResults() {
+  return request("/allocation", "Failed to fetch allocation results");
 }
 
 export { API_BASE_URL };
