@@ -1,4 +1,3 @@
-
 function PrescriptionSummary({ prescriptions }) {
   const selectedCustomers = prescriptions.filter(
     (customer) => customer.selected
@@ -34,32 +33,31 @@ function PrescriptionSummary({ prescriptions }) {
     ).length,
   }));
 
-  const formatCurrency = (amount) =>
-    new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 0,
-    }).format(amount);
-
   return (
     <section className="prescription-summary">
       <div className="summary-heading">
         <div>
-          <h2>Allocation Result Summary</h2>
-          <p>Overview of the currently selected customer prescriptions.</p>
+          <h2>Prescription Summary</h2>
+          <p>
+            Overview of the current customer selection and marketing
+            recommendations.
+          </p>
         </div>
-        <span className="summary-status">Updated automatically</span>
+
+        <div className="summary-status">
+          {selectedCount > 0 ? "Recommendations Available" : "No Customers Selected"}
+        </div>
       </div>
 
       <div className="result-summary-grid">
         <div className="result-summary-card">
           <span>Selected Customers</span>
-          <strong>{selectedCount.toLocaleString("en-IN")}</strong>
+          <strong>{selectedCount.toLocaleString()}</strong>
         </div>
 
         <div className="result-summary-card">
           <span>Estimated Spend</span>
-          <strong>{formatCurrency(totalSpend)}</strong>
+          <strong>₹{totalSpend.toLocaleString()}</strong>
         </div>
 
         <div className="result-summary-card">
@@ -68,7 +66,7 @@ function PrescriptionSummary({ prescriptions }) {
         </div>
 
         <div className="result-summary-card">
-          <span>Average ITE Score</span>
+          <span>Average ITE</span>
           <strong>{averageITE.toFixed(3)}</strong>
         </div>
       </div>
@@ -76,54 +74,48 @@ function PrescriptionSummary({ prescriptions }) {
       <div className="discount-breakdown">
         <h3>Discount Distribution</h3>
 
-        {discountBreakdown.map((item) => {
-          const percentage =
-            selectedCount > 0
-              ? (item.count / selectedCount) * 100
-              : 0;
+        {discountBreakdown.map((item) => (
+          <div className="discount-row" key={item.discount}>
+            <span>{item.discount}% Discount</span>
 
-          return (
-            <div className="discount-row" key={item.discount}>
-              <div className="discount-label">
-                <span>{item.discount}% Discount</span>
-                <span>{item.count} customers</span>
-              </div>
-
-              <div className="discount-track">
-                <div
-                  className="discount-fill"
-                  style={{ width: `${percentage}%` }}
-                />
-              </div>
+            <div className="discount-track">
+              <div
+                className="discount-fill"
+                style={{
+                  width:
+                    selectedCount > 0
+                      ? `${(item.count / selectedCount) * 100}%`
+                      : "0%",
+                }}
+              />
             </div>
-          );
-        })}
+
+            <strong>{item.count}</strong>
+          </div>
+        ))}
       </div>
 
       <div className="allocation-insight">
         <h3>Result Summary</h3>
 
-        {selectedCount === 0 ? (
+        {selectedCount > 0 ? (
           <p>
-            No customers are currently selected. Select customers or update
-            their discount percentages to generate an allocation summary.
+            The current selection contains {selectedCount.toLocaleString()}{" "}
+            customers with an estimated marketing spend of ₹
+            {totalSpend.toLocaleString()}. Customers with higher positive ITE
+            values are prioritized for higher recommended discounts.
           </p>
         ) : (
           <p>
-            Currently, <strong>{selectedCount.toLocaleString("en-IN")}</strong>{" "}
-            customers are selected, with an estimated total spend of{" "}
-            <strong>{formatCurrency(totalSpend)}</strong>. The average
-            recommended discount is{" "}
-            <strong>{averageDiscount.toFixed(1)}%</strong>, and the average
-            ITE score is <strong>{averageITE.toFixed(3)}</strong>.
+            Select eligible customers from the allocation table to view the
+            marketing recommendation summary.
           </p>
         )}
+      </div>
 
-        <p className="summary-disclaimer">
-          These figures are based on sample data and illustrative discount
-          costs. They do not represent verified causal model results or
-          guarantee that a marketing budget constraint is satisfied.
-        </p>
+      <div className="summary-disclaimer">
+        The displayed allocation and cost values are illustrative and depend
+        on the available model results and backend optimization logic.
       </div>
     </section>
   );
