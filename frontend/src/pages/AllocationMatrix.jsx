@@ -1,12 +1,109 @@
-
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import allocationResults from "../data/allocationResults";
 import PrescriptionSummary from "../components/PrescriptionSummary";
+import { fetchAllocationResults } from "../utils/api";
 
 function AllocationMatrix() {
   const [searchTerm, setSearchTerm] = useState("");
   const [eligibilityFilter, setEligibilityFilter] = useState("all");
-  const [prescriptions, setPrescriptions] = useState(allocationResults);
+
+  const [prescriptions, setPrescriptions] = useState(
+    allocationResults
+  );
+
+  const [dataSource, setDataSource] = useState("mock");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    const loadAllocationResults = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const response = await fetchAllocationResults();
+
+        if (!active) {
+          return;
+        }
+
+        const results = Array.isArray(response)
+          ? response
+          : response.results;
+
+        if (!Array.isArray(results) || results.length === 0) {
+          throw new Error("Backend returned no allocation results");
+        }
+
+        const formattedResults = results.map((customer, index) => {
+          const customerId =
+            customer.customerId ||
+            customer.customer_id ||
+            `C${String(index + 1).padStart(5, "0")}`;
+
+          const ite = Number(
+            customer.ite ??
+              customer.ite_score ??
+              customer.treatment_effect ??
+              0
+          );
+
+          const recommendedDiscount = Number(
+            customer.recommendedDiscount ??
+              customer.recommended_discount ??
+              customer.discount ??
+              0
+          );
+
+          const estimatedCost = Number(
+            customer.estimatedCost ??
+              customer.estimated_cost ??
+              recommendedDiscount * 10
+          );
+
+          const eligible =
+            customer.eligible !== undefined
+              ? Boolean(customer.eligible)
+              : ite > 0;
+
+          return {
+            customerId,
+            ite,
+            recommendedDiscount,
+            estimatedCost,
+            eligible,
+            selected: customer.selected ?? eligible,
+          };
+        });
+
+        setPrescriptions(formattedResults);
+        setDataSource("backend");
+      } catch (backendError) {
+        if (!active) {
+          return;
+        }
+
+        setError(
+          "Backend data is unavailable. Showing sample data instead."
+        );
+
+        setPrescriptions(allocationResults);
+        setDataSource("mock");
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadAllocationResults();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredResults = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -53,7 +150,10 @@ function AllocationMatrix() {
     setPrescriptions((previous) =>
       previous.map((customer) =>
         customer.customerId === customerId
-          ? { ...customer, selected: !customer.selected }
+          ? {
+              ...customer,
+              selected: !customer.selected,
+            }
           : customer
       )
     );
@@ -66,7 +166,11 @@ function AllocationMatrix() {
 
     const discount = Number(discountValue);
 
-    if (!Number.isFinite(discount) || discount < 0 || discount > 100) {
+    if (
+      !Number.isFinite(discount) ||
+      discount < 0 ||
+      discount > 100
+    ) {
       return;
     }
 
@@ -106,45 +210,88 @@ function AllocationMatrix() {
     <div className="allocation-page">
       <div className="page-header">
         <h1>Customer Prescriptions</h1>
+
         <p>
           Review recommended discounts and select customers
           for the marketing campaign.
         </p>
       </div>
 
+      <div className="integration-status">
+        <span
+          className={
+            dataSource === "backend"
+              ? "integration-badge backend"
+              : "integration-badge mock"
+          }
+        >
+          {dataSource === "backend"
+            ? "Backend Data"
+            : "Sample Data"}
+        </span>
+
+        {loading && (
+          <span className="integration-message">
+            Loading allocation results...
+          </span>
+        )}
+
+        {!loading && error && (
+          <span className="integration-message">
+            {error}
+          </span>
+        )}
+      </div>
+
       <div className="allocation-summary">
         <div className="allocation-summary-card">
           <span>Total Customers</span>
-          <strong>{summary.totalCustomers.toLocaleString("en-IN")}</strong>
+
+          <strong>
+            {summary.totalCustomers.toLocaleString("en-IN")}
+          </strong>
         </div>
 
         <div className="allocation-summary-card">
           <span>Selected Customers</span>
-          <strong>{summary.selectedCustomers.toLocaleString("en-IN")}</strong>
+
+          <strong>
+            {summary.selectedCustomers.toLocaleString("en-IN")}
+          </strong>
         </div>
 
         <div className="allocation-summary-card">
           <span>Estimated Spend</span>
-          <strong>{formatAmount(summary.totalEstimatedCost)}</strong>
+
+          <strong>
+            {formatAmount(summary.totalEstimatedCost)}
+          </strong>
         </div>
 
         <div className="allocation-summary-card">
           <span>Unselected Customers</span>
+
           <strong>
-            {(summary.totalCustomers - summary.selectedCustomers)
-              .toLocaleString("en-IN")}
+            {(
+              summary.totalCustomers -
+              summary.selectedCustomers
+            ).toLocaleString("en-IN")}
           </strong>
         </div>
       </div>
 
-      <PrescriptionSummary prescriptions={prescriptions} />
+      <PrescriptionSummary
+        prescriptions={prescriptions}
+      />
 
       <div className="allocation-table-card">
         <div className="allocation-table-header">
           <div>
             <h2>Prescription Details</h2>
+
             <p>
-              Select customers and adjust discount values for testing.
+              Select customers and adjust discount values for
+              testing.
             </p>
           </div>
 
@@ -153,7 +300,9 @@ function AllocationMatrix() {
               type="search"
               placeholder="Search customer ID..."
               value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={(event) =>
+                setSearchTerm(event.target.value)
+              }
               aria-label="Search customer ID"
             />
 
@@ -164,26 +313,43 @@ function AllocationMatrix() {
               }
               aria-label="Filter eligibility"
             >
-              <option value="all">All Customers</option>
-              <option value="eligible">Eligible</option>
-              <option value="ineligible">Ineligible</option>
+              <option value="all">
+                All Customers
+              </option>
+
+              <option value="eligible">
+                Eligible
+              </option>
+
+              <option value="ineligible">
+                Ineligible
+              </option>
             </select>
           </div>
         </div>
 
         <div className="prescription-actions">
-          <button type="button" onClick={selectEligibleCustomers}>
+          <button
+            type="button"
+            onClick={selectEligibleCustomers}
+          >
             Select Eligible Customers
           </button>
 
-          <button type="button" onClick={clearSelection}>
+          <button
+            type="button"
+            onClick={clearSelection}
+          >
             Clear Selection
           </button>
         </div>
 
         <div className="allocation-result-count">
-          Showing {filteredResults.length.toLocaleString("en-IN")} of{" "}
-          {summary.totalCustomers.toLocaleString("en-IN")} customers
+          Showing{" "}
+          {filteredResults.length.toLocaleString("en-IN")}{" "}
+          of{" "}
+          {summary.totalCustomers.toLocaleString("en-IN")}{" "}
+          customers
         </div>
 
         <div className="allocation-table-wrapper">
@@ -208,7 +374,9 @@ function AllocationMatrix() {
                         type="checkbox"
                         checked={customer.selected}
                         onChange={() =>
-                          toggleSelection(customer.customerId)
+                          toggleSelection(
+                            customer.customerId
+                          )
                         }
                         aria-label={`Select ${customer.customerId}`}
                       />
@@ -239,7 +407,9 @@ function AllocationMatrix() {
                         min="0"
                         max="100"
                         step="5"
-                        value={customer.recommendedDiscount}
+                        value={
+                          customer.recommendedDiscount
+                        }
                         onChange={(event) =>
                           updateDiscount(
                             customer.customerId,
@@ -250,7 +420,11 @@ function AllocationMatrix() {
                       />
                     </td>
 
-                    <td>{formatAmount(customer.estimatedCost)}</td>
+                    <td>
+                      {formatAmount(
+                        customer.estimatedCost
+                      )}
+                    </td>
 
                     <td>
                       <span
@@ -260,14 +434,19 @@ function AllocationMatrix() {
                             : "eligibility-badge ineligible"
                         }
                       >
-                        {customer.eligible ? "Eligible" : "Ineligible"}
+                        {customer.eligible
+                          ? "Eligible"
+                          : "Ineligible"}
                       </span>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="allocation-empty">
+                  <td
+                    colSpan={6}
+                    className="allocation-empty"
+                  >
                     No customers match your filters.
                   </td>
                 </tr>
@@ -278,10 +457,11 @@ function AllocationMatrix() {
       </div>
 
       <div className="allocation-note">
-        <strong>Development note:</strong> Discount values and costs are
-        illustrative. This page does not yet enforce a campaign budget
-        constraint or calculate optimal discounts using the causal
-        optimization backend.
+        <strong>Development note:</strong>{" "}
+        Backend results are used when the API is available.
+        Sample data is displayed as a fallback during
+        development. Discount editing currently changes the
+        frontend estimate only.
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import BackendStatus from "../components/BackendStatus";
 function Dashboard() {
   return (
     <div className="page">
@@ -10,7 +11,8 @@ function Dashboard() {
         </p>
       </div>
 
-    
+      <BackendStatus />
+      
       <div className="card-container">
         <div className="card">
           <div className="card-icon">📊</div>
