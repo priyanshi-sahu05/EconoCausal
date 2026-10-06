@@ -104,6 +104,11 @@ function Dashboard() {
             <span>Documentation</span>
             <strong>Ready</strong>
           </div>
+
+          <div>
+            <span>Backend Allocation API</span>
+            <strong>Pending</strong>
+          </div>
         </div>
       </div>
     </div>
