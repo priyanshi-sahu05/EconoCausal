@@ -1,4 +1,6 @@
 import BackendStatus from "../components/BackendStatus";
+import DashboardMetrics from "../components/DashboardMetrics";
+import CustomerSegmentSummary from "../components/CustomerSegmentSummary";
 
 function Dashboard() {
   return (
@@ -11,6 +13,8 @@ function Dashboard() {
       </div>
 
       <BackendStatus />
+      <DashboardMetrics/>
+      <CustomerSegmentSummary />
 
       <div className="dashboard-grid">
         <div className="dashboard-card">
@@ -76,41 +80,7 @@ function Dashboard() {
         </div>
       </div>
 
-      <div className="final-review-card">
-        <h2>Project Status</h2>
-
-        <div className="final-status-list">
-          <div>
-            <span>Frontend Dashboard</span>
-            <strong>Ready</strong>
-          </div>
-
-          <div>
-            <span>Causal Visualizations</span>
-            <strong>Ready</strong>
-          </div>
-
-          <div>
-            <span>ITE Filtering</span>
-            <strong>Ready</strong>
-          </div>
-
-          <div>
-            <span>Allocation Interface</span>
-            <strong>Ready</strong>
-          </div>
-
-          <div>
-            <span>Documentation</span>
-            <strong>Ready</strong>
-          </div>
-
-          <div>
-            <span>Backend Allocation API</span>
-            <strong>Pending</strong>
-          </div>
-        </div>
-      </div>
+      
     </div>
   );
 }

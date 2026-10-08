@@ -74,13 +74,16 @@ function AllocationMatrix() {
             recommendedDiscount,
             estimatedCost,
             eligible,
-            selected: customer.selected ?? eligible,
+            selected:
+              customer.selected !== undefined
+                ? Boolean(customer.selected)
+                : eligible,
           };
         });
 
         setPrescriptions(formattedResults);
         setDataSource("backend");
-      } catch (backendError) {
+      } catch {
         if (!active) {
           return;
         }
@@ -204,6 +207,63 @@ function AllocationMatrix() {
         selected: false,
       }))
     );
+  };
+
+  const exportToCSV = () => {
+    const headers = [
+      "Customer ID",
+      "ITE",
+      "Recommended Discount",
+      "Estimated Cost",
+      "Eligible",
+      "Selected",
+    ];
+
+    const escapeCSVValue = (value) => {
+      const stringValue = String(value);
+
+      if (
+        stringValue.includes(",") ||
+        stringValue.includes('"') ||
+        stringValue.includes("\n")
+      ) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+
+      return stringValue;
+    };
+
+    const rows = prescriptions.map((customer) => [
+      customer.customerId,
+      customer.ite,
+      customer.recommendedDiscount,
+      customer.estimatedCost,
+      customer.eligible ? "Yes" : "No",
+      customer.selected ? "Yes" : "No",
+    ]);
+
+    const csvContent = [
+      headers.map(escapeCSVValue).join(","),
+      ...rows.map((row) =>
+        row.map(escapeCSVValue).join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "econocausal_allocation_results.csv";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -342,6 +402,14 @@ function AllocationMatrix() {
           >
             Clear Selection
           </button>
+
+          <button
+            type="button"
+            className="export-button"
+            onClick={exportToCSV}
+          >
+            Export CSV
+          </button>
         </div>
 
         <div className="allocation-result-count">
@@ -407,9 +475,7 @@ function AllocationMatrix() {
                         min="0"
                         max="100"
                         step="5"
-                        value={
-                          customer.recommendedDiscount
-                        }
+                        value={customer.recommendedDiscount}
                         onChange={(event) =>
                           updateDiscount(
                             customer.customerId,
