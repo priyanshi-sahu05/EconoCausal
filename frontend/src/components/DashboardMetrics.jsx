@@ -1,59 +1,63 @@
+
 import { useMemo } from "react";
 import modelResults from "../data/modelResults";
 import allocationResults from "../data/allocationResults";
 
 function DashboardMetrics() {
   const metrics = useMemo(() => {
-    const totalCustomers = modelResults.length;
-
     const positiveCustomers = modelResults.filter(
       (customer) => customer.ite > 0
     ).length;
 
-    const selectedCustomers = allocationResults.filter(
+    const selected = allocationResults.filter(
       (customer) => customer.selected
-    ).length;
+    );
 
-    const estimatedSpend = allocationResults
-      .filter((customer) => customer.selected)
-      .reduce(
-        (total, customer) => total + customer.estimatedCost,
-        0
-      );
+    const estimatedSpend = selected.reduce(
+      (total, customer) => total + customer.estimatedCost,
+      0
+    );
 
     return {
-      totalCustomers,
+      totalCustomers: modelResults.length,
       positiveCustomers,
-      selectedCustomers,
+      selectedCustomers: selected.length,
       estimatedSpend,
     };
   }, []);
 
+  const cards = [
+    {
+      title: "Total Customers",
+      value: metrics.totalCustomers.toLocaleString("en-IN"),
+      description: "Customers available for analysis",
+    },
+    {
+      title: "Positive ITE",
+      value: metrics.positiveCustomers.toLocaleString("en-IN"),
+      description: "Customers with positive treatment effects",
+    },
+    {
+      title: "Selected Customers",
+      value: metrics.selectedCustomers.toLocaleString("en-IN"),
+      description: "Selected in the sample allocation data",
+    },
+    {
+      title: "Estimated Spend",
+      value: `₹${metrics.estimatedSpend.toLocaleString("en-IN")}`,
+      description: "Estimated sample allocation cost",
+    },
+  ];
+
   return (
     <div className="dashboard-metrics">
-      <div className="metric-card">
-        <span>Total Customers</span>
-        <strong>{metrics.totalCustomers.toLocaleString()}</strong>
-        <small>Available for analysis</small>
-      </div>
-
-      <div className="metric-card">
-        <span>Positive ITE</span>
-        <strong>{metrics.positiveCustomers.toLocaleString()}</strong>
-        <small>Customers with positive treatment effect</small>
-      </div>
-
-      <div className="metric-card">
-        <span>Selected Customers</span>
-        <strong>{metrics.selectedCustomers.toLocaleString()}</strong>
-        <small>Current allocation</small>
-      </div>
-
-      <div className="metric-card">
-        <span>Estimated Spend</span>
-        <strong>₹{metrics.estimatedSpend.toLocaleString()}</strong>
-        <small>Current allocation cost</small>
-      </div>
+      {cards.map((card) => (
+        <div className="metric-card" key={card.title}>
+          <span>{card.title}</span>
+          <strong>{card.value}</strong>
+          <small>{card.description}</small>
+        </div>
+      ))}
     </div>
   );
 }
