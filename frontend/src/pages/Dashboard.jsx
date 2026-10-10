@@ -1,6 +1,7 @@
 import BackendStatus from "../components/BackendStatus";
 import DashboardMetrics from "../components/DashboardMetrics";
 import CustomerSegmentSummary from "../components/CustomerSegmentSummary";
+import CustomerSegmentChart from "../components/CustomerSegmentChart";
 
 function Dashboard() {
   return (
@@ -14,6 +15,7 @@ function Dashboard() {
 
       <BackendStatus />
       <DashboardMetrics/>
+      <CustomerSegmentChart />
       <CustomerSegmentSummary />
 
       <div className="dashboard-grid">

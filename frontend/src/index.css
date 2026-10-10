@@ -1488,3 +1488,72 @@ display: none;
     grid-template-columns: 1fr;
   }
 }
+
+.segment-chart-card {
+  margin: 20px 0 24px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.segment-chart-card h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.segment-chart-card > p {
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.segment-chart-list {
+  display: grid;
+  gap: 22px;
+  margin-top: 24px;
+}
+
+.segment-chart-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+  font-size: 14px;
+}
+
+.segment-chart-label strong {
+  text-align: right;
+}
+
+.segment-chart-track {
+  height: 12px;
+  overflow: hidden;
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+.segment-chart-fill {
+  height: 100%;
+  background: #4f46e5;
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+.segment-chart-card .segment-chart-note {
+  margin: 22px 0 0;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .segment-chart-card {
+    padding: 16px;
+  }
+
+  .segment-chart-label {
+    flex-direction: column;
+  }
+
+  .segment-chart-label strong {
+    text-align: left;
+  }
+}
