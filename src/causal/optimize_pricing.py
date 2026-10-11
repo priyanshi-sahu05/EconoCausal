@@ -40,7 +40,7 @@ print("Available Budget:", budget)
 print("Selected Discount:", best_option["discount"])
 print("Estimated Revenue per Customer:",
 round(best_option["estimated_revenue"], 2))
-print("Total Marketing Cost:", best_option["total_cost"])
+print("Total Marketing Cost:", best_option["total_cost"]) 
 
 # Save results
 
