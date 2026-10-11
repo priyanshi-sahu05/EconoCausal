@@ -51,3 +51,13 @@ print(treatment_effect[:10])
 
 print("\nAverage Treatment Effect:")
 print(treatment_effect.mean())
+
+# Save Individual Treatment Effects
+results = pd.DataFrame({
+    "customer_id": range(1, len(treatment_effect) + 1),
+    "estimated_treatment_effect": treatment_effect
+})
+
+results.to_csv("data/ite_results.csv", index=False)
+
+print("\nITE results saved to data/ite_results.csv")
