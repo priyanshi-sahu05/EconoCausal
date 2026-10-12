@@ -5,10 +5,26 @@ import modelResults from "../data/modelResults";
 function CustomerSegmentChart() {
   const segments = useMemo(() => {
     const definitions = [
-      { label: "High Potential", min: 0.5, max: Infinity },
-      { label: "Medium Potential", min: 0.2, max: 0.5 },
-      { label: "Low Potential", min: 0, max: 0.2 },
-      { label: "Negative / No Effect", min: -Infinity, max: 0 },
+      {
+        label: "High Potential",
+        min: 0.5,
+        max: Infinity,
+      },
+      {
+        label: "Medium Potential",
+        min: 0.2,
+        max: 0.5,
+      },
+      {
+        label: "Low Potential",
+        min: 0,
+        max: 0.2,
+      },
+      {
+        label: "Negative / No Effect",
+        min: -Infinity,
+        max: 0,
+      },
     ];
 
     return definitions.map((segment) => {
@@ -23,12 +39,15 @@ function CustomerSegmentChart() {
         );
       }).length;
 
+      const percentage =
+        modelResults.length > 0
+          ? (count / modelResults.length) * 100
+          : 0;
+
       return {
         ...segment,
         count,
-        percentage: modelResults.length
-          ? (count / modelResults.length) * 100
-          : 0,
+        percentage,
       };
     });
   }, []);
@@ -36,16 +55,23 @@ function CustomerSegmentChart() {
   return (
     <section className="segment-chart-card">
       <h2>Customer Segment Analysis</h2>
-      <p>Customer distribution based on estimated ITE scores.</p>
+
+      <p>
+        Customer distribution based on estimated treatment effects.
+      </p>
 
       <div className="segment-chart-list">
         {segments.map((segment) => (
-          <div className="segment-chart-item" key={segment.label}>
+          <div
+            className="segment-chart-item"
+            key={segment.label}
+          >
             <div className="segment-chart-label">
               <span>{segment.label}</span>
+
               <strong>
-                {segment.count.toLocaleString("en-IN")}
-                {" "}({segment.percentage.toFixed(1)}%)
+                {segment.count.toLocaleString("en-IN")} (
+                {segment.percentage.toFixed(1)}%)
               </strong>
             </div>
 
@@ -55,11 +81,15 @@ function CustomerSegmentChart() {
               aria-label={segment.label}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-valuenow={Number(segment.percentage.toFixed(1))}
+              aria-valuenow={Number(
+                segment.percentage.toFixed(1)
+              )}
             >
               <div
                 className="segment-chart-fill"
-                style={{ width: `${segment.percentage}%` }}
+                style={{
+                  width: `${segment.percentage}%`,
+                }}
               />
             </div>
           </div>
@@ -67,7 +97,7 @@ function CustomerSegmentChart() {
       </div>
 
       <p className="segment-chart-note">
-        Segment counts are based on the currently imported sample dataset.
+        Counts are calculated from the available sample dataset.
       </p>
     </section>
   );
