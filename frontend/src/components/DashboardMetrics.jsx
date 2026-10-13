@@ -40,13 +40,13 @@ function DashboardMetrics() {
     {
       title: "Selected Customers",
       value: metrics.selectedCustomers.toLocaleString("en-IN"),
-      description: "Selected in the sample allocation data",
+      description: "Selected in sample allocation data",
     },
     {
-      title: "Estimated Spend",
-      value: `₹${metrics.estimatedSpend.toLocaleString("en-IN")}`,
-      description: "Estimated sample allocation cost",
-    },
+     title: "Estimated Spend",
+     value: `₹${metrics.estimatedSpend.toLocaleString("en-IN")}`,
+     description: "Estimated sample allocation cost",
+    },,
   ];
 
   return (
