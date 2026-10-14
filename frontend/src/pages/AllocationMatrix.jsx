@@ -162,34 +162,37 @@ function AllocationMatrix() {
     );
   };
 
-  const updateDiscount = (customerId, discountValue) => {
-    if (discountValue === "") {
-      return;
-    }
+  
+const updateDiscount = (customerId, discountValue) => {
+  if (discountValue === "") {
+    return;
+  }
 
-    const discount = Number(discountValue);
+  const discount = Number(discountValue);
 
-    if (
-      !Number.isFinite(discount) ||
-      discount < 0 ||
-      discount > 100
-    ) {
-      return;
-    }
+  if (
+    !Number.isFinite(discount) ||
+    discount < 0 ||
+    discount > 100
+  ) {
+    window.alert("Enter a discount between 0 and 100.");
+    return;
+  }
 
-    setPrescriptions((previous) =>
-      previous.map((customer) =>
-        customer.customerId === customerId
-          ? {
-              ...customer,
-              recommendedDiscount: discount,
-              estimatedCost: discount * 10,
-              selected: discount > 0,
-            }
-          : customer
-      )
-    );
-  };
+  setAllocationData((previousData) =>
+    previousData.map((customer) =>
+      customer.customerId === customerId
+        ? {
+            ...customer,
+            recommendedDiscount: discount,
+            estimatedCost: discount * 10,
+            selected: discount > 0,
+          }
+        : customer
+    )
+  );
+};
+
 
   const selectEligibleCustomers = () => {
     setPrescriptions((previous) =>
@@ -209,62 +212,58 @@ function AllocationMatrix() {
     );
   };
 
-  const exportToCSV = () => {
-    const headers = [
-      "Customer ID",
-      "ITE",
-      "Recommended Discount",
-      "Estimated Cost",
-      "Eligible",
-      "Selected",
-    ];
+  
+const exportToCSV = () => {
+  if (filteredResults.length === 0) {
+    window.alert("No allocation results available to export.");
+    return;
+  }
 
-    const escapeCSVValue = (value) => {
-      const stringValue = String(value);
+  const headers = [
+    "Customer ID",
+    "ITE",
+    "Recommended Discount",
+    "Estimated Cost",
+    "Eligible",
+    "Selected",
+  ];
 
-      if (
-        stringValue.includes(",") ||
-        stringValue.includes('"') ||
-        stringValue.includes("\n")
-      ) {
-        return `"${stringValue.replace(/"/g, '""')}"`;
-      }
-
-      return stringValue;
-    };
-
-    const rows = prescriptions.map((customer) => [
-      customer.customerId,
-      customer.ite,
-      customer.recommendedDiscount,
-      customer.estimatedCost,
-      customer.eligible ? "Yes" : "No",
-      customer.selected ? "Yes" : "No",
-    ]);
-
-    const csvContent = [
-      headers.map(escapeCSVValue).join(","),
-      ...rows.map((row) =>
-        row.map(escapeCSVValue).join(",")
-      ),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
-
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "econocausal_allocation_results.csv";
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    URL.revokeObjectURL(url);
+  const escapeCSV = (value) => {
+    const text = String(value ?? "");
+    return `"${text.replace(/"/g, '""')}"`;
   };
+
+  const rows = filteredResults.map((customer) => [
+    customer.customerId,
+    customer.ite,
+    customer.recommendedDiscount,
+    customer.estimatedCost,
+    customer.eligible ? "Yes" : "No",
+    customer.selected ? "Yes" : "No",
+  ]);
+
+  const csvContent = [headers, ...rows]
+    .map((row) => row.map(escapeCSV).join(","))
+    .join("\r\n");
+
+  const blob = new Blob(
+    ["\uFEFF", csvContent],
+    { type: "text/csv;charset=utf-8;" }
+  );
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = "econocausal_allocation_results.csv";
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  URL.revokeObjectURL(url);
+};
+
 
   return (
     <div className="allocation-page">
