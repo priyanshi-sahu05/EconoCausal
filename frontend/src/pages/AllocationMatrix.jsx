@@ -6,14 +6,11 @@ import { fetchAllocationResults } from "../utils/api";
 function AllocationMatrix() {
   const [searchTerm, setSearchTerm] = useState("");
   const [eligibilityFilter, setEligibilityFilter] = useState("all");
-
-  const [prescriptions, setPrescriptions] = useState(
-    allocationResults
-  );
-
+  const [prescriptions, setPrescriptions] = useState(allocationResults);
   const [dataSource, setDataSource] = useState("mock");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [apiMessage, setApiMessage] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -21,17 +18,16 @@ function AllocationMatrix() {
     const loadAllocationResults = async () => {
       setLoading(true);
       setError("");
+      setApiMessage("");
 
       try {
         const response = await fetchAllocationResults();
 
-        if (!active) {
-          return;
-        }
+        if (!active) return;
 
         const results = Array.isArray(response)
           ? response
-          : response.results;
+          : response?.results;
 
         if (!Array.isArray(results) || results.length === 0) {
           throw new Error("Backend returned no allocation results");
@@ -39,8 +35,8 @@ function AllocationMatrix() {
 
         const formattedResults = results.map((customer, index) => {
           const customerId =
-            customer.customerId ||
-            customer.customer_id ||
+            customer.customerId ??
+            customer.customer_id ??
             `C${String(index + 1).padStart(5, "0")}`;
 
           const ite = Number(
@@ -69,7 +65,7 @@ function AllocationMatrix() {
               : ite > 0;
 
           return {
-            customerId,
+            customerId: String(customerId),
             ite,
             recommendedDiscount,
             estimatedCost,
@@ -83,17 +79,18 @@ function AllocationMatrix() {
 
         setPrescriptions(formattedResults);
         setDataSource("backend");
-      } catch {
-        if (!active) {
-          return;
-        }
-
-        setError(
-          "Backend data is unavailable. Showing sample data instead."
-        );
+        setApiMessage("Allocation data loaded from backend.");
+      } catch (err) {
+        if (!active) return;
 
         setPrescriptions(allocationResults);
         setDataSource("mock");
+        setError(
+          "Backend data is unavailable. Showing sample data instead."
+        );
+        setApiMessage(
+          "Backend unavailable. Showing sample data instead."
+        );
       } finally {
         if (active) {
           setLoading(false);
@@ -112,7 +109,7 @@ function AllocationMatrix() {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
     return prescriptions.filter((customer) => {
-      const matchesSearch = customer.customerId
+      const matchesSearch = String(customer.customerId)
         .toLowerCase()
         .includes(normalizedSearch);
 
@@ -153,46 +150,37 @@ function AllocationMatrix() {
     setPrescriptions((previous) =>
       previous.map((customer) =>
         customer.customerId === customerId
-          ? {
-              ...customer,
-              selected: !customer.selected,
-            }
+          ? { ...customer, selected: !customer.selected }
           : customer
       )
     );
   };
 
-  
-const updateDiscount = (customerId, discountValue) => {
-  if (discountValue === "") {
-    return;
-  }
+  const updateDiscount = (customerId, discountValue) => {
+    if (discountValue === "") {
+      return;
+    }
 
-  const discount = Number(discountValue);
+    const discount = Number(discountValue);
 
-  if (
-    !Number.isFinite(discount) ||
-    discount < 0 ||
-    discount > 100
-  ) {
-    window.alert("Enter a discount between 0 and 100.");
-    return;
-  }
+    if (!Number.isFinite(discount) || discount < 0 || discount > 100) {
+      window.alert("Enter a discount between 0 and 100.");
+      return;
+    }
 
-  setAllocationData((previousData) =>
-    previousData.map((customer) =>
-      customer.customerId === customerId
-        ? {
-            ...customer,
-            recommendedDiscount: discount,
-            estimatedCost: discount * 10,
-            selected: discount > 0,
-          }
-        : customer
-    )
-  );
-};
-
+    setPrescriptions((previous) =>
+      previous.map((customer) =>
+        customer.customerId === customerId
+          ? {
+              ...customer,
+              recommendedDiscount: discount,
+              estimatedCost: discount * 10,
+              selected: discount > 0,
+            }
+          : customer
+      )
+    );
+  };
 
   const selectEligibleCustomers = () => {
     setPrescriptions((previous) =>
@@ -212,64 +200,60 @@ const updateDiscount = (customerId, discountValue) => {
     );
   };
 
-  
-const exportToCSV = () => {
-  if (filteredResults.length === 0) {
-    window.alert("No allocation results available to export.");
-    return;
-  }
+  const exportToCSV = () => {
+    if (filteredResults.length === 0) {
+      window.alert("No allocation results available to export.");
+      return;
+    }
 
-  const headers = [
-    "Customer ID",
-    "ITE",
-    "Recommended Discount",
-    "Estimated Cost",
-    "Eligible",
-    "Selected",
-  ];
+    const headers = [
+      "Customer ID",
+      "ITE",
+      "Recommended Discount",
+      "Estimated Cost",
+      "Eligible",
+      "Selected",
+    ];
 
-  const escapeCSV = (value) => {
-    const text = String(value ?? "");
-    return `"${text.replace(/"/g, '""')}"`;
+    const escapeCSV = (value) => {
+      const text = String(value ?? "");
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+
+    const rows = filteredResults.map((customer) => [
+      customer.customerId,
+      customer.ite,
+      customer.recommendedDiscount,
+      customer.estimatedCost,
+      customer.eligible ? "Yes" : "No",
+      customer.selected ? "Yes" : "No",
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map(escapeCSV).join(","))
+      .join("\r\n");
+
+    const blob = new Blob(["\uFEFF", csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "econocausal_allocation_results.csv";
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(url);
   };
-
-  const rows = filteredResults.map((customer) => [
-    customer.customerId,
-    customer.ite,
-    customer.recommendedDiscount,
-    customer.estimatedCost,
-    customer.eligible ? "Yes" : "No",
-    customer.selected ? "Yes" : "No",
-  ]);
-
-  const csvContent = [headers, ...rows]
-    .map((row) => row.map(escapeCSV).join(","))
-    .join("\r\n");
-
-  const blob = new Blob(
-    ["\uFEFF", csvContent],
-    { type: "text/csv;charset=utf-8;" }
-  );
-
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = "econocausal_allocation_results.csv";
-
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  URL.revokeObjectURL(url);
-};
-
 
   return (
     <div className="allocation-page">
       <div className="page-header">
         <h1>Customer Prescriptions</h1>
-
         <p>
           Review recommended discounts and select customers
           for the marketing campaign.
@@ -284,9 +268,7 @@ const exportToCSV = () => {
               : "integration-badge mock"
           }
         >
-          {dataSource === "backend"
-            ? "Backend Data"
-            : "Sample Data"}
+          {dataSource === "backend" ? "Backend Data" : "Sample Data"}
         </span>
 
         {loading && (
@@ -296,16 +278,38 @@ const exportToCSV = () => {
         )}
 
         {!loading && error && (
-          <span className="integration-message">
+          <span className="integration-message" role="status">
             {error}
+          </span>
+        )}
+
+        {!loading && !error && apiMessage && (
+          <span className="integration-message" role="status">
+            {apiMessage}
           </span>
         )}
       </div>
 
+      {loading && (
+        <p className="status-message" role="status">
+          Loading allocation data...
+        </p>
+      )}
+
+      {!loading && apiMessage && (
+        <p
+          className={`status-message ${
+            dataSource === "backend" ? "success" : "warning"
+          }`}
+          role="status"
+        >
+          {apiMessage}
+        </p>
+      )}
+
       <div className="allocation-summary">
         <div className="allocation-summary-card">
           <span>Total Customers</span>
-
           <strong>
             {summary.totalCustomers.toLocaleString("en-IN")}
           </strong>
@@ -313,7 +317,6 @@ const exportToCSV = () => {
 
         <div className="allocation-summary-card">
           <span>Selected Customers</span>
-
           <strong>
             {summary.selectedCustomers.toLocaleString("en-IN")}
           </strong>
@@ -321,36 +324,27 @@ const exportToCSV = () => {
 
         <div className="allocation-summary-card">
           <span>Estimated Spend</span>
-
-          <strong>
-            {formatAmount(summary.totalEstimatedCost)}
-          </strong>
+          <strong>{formatAmount(summary.totalEstimatedCost)}</strong>
         </div>
 
         <div className="allocation-summary-card">
           <span>Unselected Customers</span>
-
           <strong>
             {(
-              summary.totalCustomers -
-              summary.selectedCustomers
+              summary.totalCustomers - summary.selectedCustomers
             ).toLocaleString("en-IN")}
           </strong>
         </div>
       </div>
 
-      <PrescriptionSummary
-        prescriptions={prescriptions}
-      />
+      <PrescriptionSummary prescriptions={prescriptions} />
 
       <div className="allocation-table-card">
         <div className="allocation-table-header">
           <div>
             <h2>Prescription Details</h2>
-
             <p>
-              Select customers and adjust discount values for
-              testing.
+              Select customers and adjust discount values for testing.
             </p>
           </div>
 
@@ -359,9 +353,7 @@ const exportToCSV = () => {
               type="search"
               placeholder="Search customer ID..."
               value={searchTerm}
-              onChange={(event) =>
-                setSearchTerm(event.target.value)
-              }
+              onChange={(event) => setSearchTerm(event.target.value)}
               aria-label="Search customer ID"
             />
 
@@ -372,33 +364,19 @@ const exportToCSV = () => {
               }
               aria-label="Filter eligibility"
             >
-              <option value="all">
-                All Customers
-              </option>
-
-              <option value="eligible">
-                Eligible
-              </option>
-
-              <option value="ineligible">
-                Ineligible
-              </option>
+              <option value="all">All Customers</option>
+              <option value="eligible">Eligible</option>
+              <option value="ineligible">Ineligible</option>
             </select>
           </div>
         </div>
 
         <div className="prescription-actions">
-          <button
-            type="button"
-            onClick={selectEligibleCustomers}
-          >
+          <button type="button" onClick={selectEligibleCustomers}>
             Select Eligible Customers
           </button>
 
-          <button
-            type="button"
-            onClick={clearSelection}
-          >
+          <button type="button" onClick={clearSelection}>
             Clear Selection
           </button>
 
@@ -412,11 +390,8 @@ const exportToCSV = () => {
         </div>
 
         <div className="allocation-result-count">
-          Showing{" "}
-          {filteredResults.length.toLocaleString("en-IN")}{" "}
-          of{" "}
-          {summary.totalCustomers.toLocaleString("en-IN")}{" "}
-          customers
+          Showing {filteredResults.length.toLocaleString("en-IN")} of{" "}
+          {summary.totalCustomers.toLocaleString("en-IN")} customers
         </div>
 
         <div className="allocation-table-wrapper">
@@ -441,9 +416,7 @@ const exportToCSV = () => {
                         type="checkbox"
                         checked={customer.selected}
                         onChange={() =>
-                          toggleSelection(
-                            customer.customerId
-                          )
+                          toggleSelection(customer.customerId)
                         }
                         aria-label={`Select ${customer.customerId}`}
                       />
@@ -485,11 +458,7 @@ const exportToCSV = () => {
                       />
                     </td>
 
-                    <td>
-                      {formatAmount(
-                        customer.estimatedCost
-                      )}
-                    </td>
+                    <td>{formatAmount(customer.estimatedCost)}</td>
 
                     <td>
                       <span
@@ -499,19 +468,14 @@ const exportToCSV = () => {
                             : "eligibility-badge ineligible"
                         }
                       >
-                        {customer.eligible
-                          ? "Eligible"
-                          : "Ineligible"}
+                        {customer.eligible ? "Eligible" : "Ineligible"}
                       </span>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="allocation-empty"
-                  >
+                  <td colSpan={6} className="allocation-empty">
                     No customers match your filters.
                   </td>
                 </tr>
@@ -523,10 +487,9 @@ const exportToCSV = () => {
 
       <div className="allocation-note">
         <strong>Development note:</strong>{" "}
-        Backend results are used when the API is available.
-        Sample data is displayed as a fallback during
-        development. Discount editing currently changes the
-        frontend estimate only.
+        Backend results are used when the API is available. Sample data
+        is displayed as a fallback during development. Discount editing
+        currently changes the frontend estimate only.
       </div>
     </div>
   );
