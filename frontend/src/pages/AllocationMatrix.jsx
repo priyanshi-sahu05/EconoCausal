@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 import allocationResults from "../data/allocationResults";
 import PrescriptionSummary from "../components/PrescriptionSummary";
@@ -11,6 +12,13 @@ function AllocationMatrix() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [apiMessage, setApiMessage] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, eligibilityFilter]);
 
   useEffect(() => {
     let active = true;
@@ -30,7 +38,7 @@ function AllocationMatrix() {
           : response?.results;
 
         if (!Array.isArray(results) || results.length === 0) {
-          throw new Error("Backend returned no allocation results");
+          throw new Error("No allocation results returned.");
         }
 
         const formattedResults = results.map((customer, index) => {
@@ -39,25 +47,39 @@ function AllocationMatrix() {
             customer.customer_id ??
             `C${String(index + 1).padStart(5, "0")}`;
 
-          const ite = Number(
+          const rawIte =
             customer.ite ??
-              customer.ite_score ??
-              customer.treatment_effect ??
-              0
-          );
+            customer.ite_score ??
+            customer.treatment_effect ??
+            0;
 
-          const recommendedDiscount = Number(
+          const rawDiscount =
             customer.recommendedDiscount ??
-              customer.recommended_discount ??
-              customer.discount ??
-              0
-          );
+            customer.recommended_discount ??
+            customer.discount ??
+            0;
 
-          const estimatedCost = Number(
+          const rawCost =
             customer.estimatedCost ??
-              customer.estimated_cost ??
-              recommendedDiscount * 10
-          );
+            customer.estimated_cost ??
+            Number(rawDiscount) * 10;
+
+          const parsedIte = Number(rawIte);
+          const parsedDiscount = Number(rawDiscount);
+          const parsedCost = Number(rawCost);
+
+          const ite = Number.isFinite(parsedIte) ? parsedIte : 0;
+          const recommendedDiscount =
+            Number.isFinite(parsedDiscount) &&
+            parsedDiscount >= 0 &&
+            parsedDiscount <= 100
+              ? parsedDiscount
+              : 0;
+
+          const estimatedCost =
+            Number.isFinite(parsedCost) && parsedCost >= 0
+              ? parsedCost
+              : recommendedDiscount * 10;
 
           const eligible =
             customer.eligible !== undefined
@@ -80,7 +102,7 @@ function AllocationMatrix() {
         setPrescriptions(formattedResults);
         setDataSource("backend");
         setApiMessage("Allocation data loaded from backend.");
-      } catch (err) {
+      } catch {
         if (!active) return;
 
         setPrescriptions(allocationResults);
@@ -122,6 +144,27 @@ function AllocationMatrix() {
     });
   }, [prescriptions, searchTerm, eligibilityFilter]);
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredResults.length / itemsPerPage)
+  );
+
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+
+  const paginatedResults = filteredResults.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
+
+  const firstItem =
+    filteredResults.length === 0 ? 0 : startIndex + 1;
+
+  const lastItem = Math.min(
+    startIndex + itemsPerPage,
+    filteredResults.length
+  );
+
   const summary = useMemo(() => {
     const selectedCustomers = prescriptions.filter(
       (customer) => customer.selected
@@ -157,13 +200,15 @@ function AllocationMatrix() {
   };
 
   const updateDiscount = (customerId, discountValue) => {
-    if (discountValue === "") {
-      return;
-    }
+    if (discountValue === "") return;
 
     const discount = Number(discountValue);
 
-    if (!Number.isFinite(discount) || discount < 0 || discount > 100) {
+    if (
+      !Number.isFinite(discount) ||
+      discount < 0 ||
+      discount > 100
+    ) {
       window.alert("Enter a discount between 0 and 100.");
       return;
     }
@@ -175,7 +220,8 @@ function AllocationMatrix() {
               ...customer,
               recommendedDiscount: discount,
               estimatedCost: discount * 10,
-              selected: discount > 0,
+              selected:
+                discount === 0 ? false : customer.selected,
             }
           : customer
       )
@@ -246,7 +292,6 @@ function AllocationMatrix() {
     document.body.appendChild(link);
     link.click();
     link.remove();
-
     URL.revokeObjectURL(url);
   };
 
@@ -271,41 +316,10 @@ function AllocationMatrix() {
           {dataSource === "backend" ? "Backend Data" : "Sample Data"}
         </span>
 
-        {loading && (
-          <span className="integration-message">
-            Loading allocation results...
-          </span>
-        )}
-
-        {!loading && error && (
-          <span className="integration-message" role="status">
-            {error}
-          </span>
-        )}
-
-        {!loading && !error && apiMessage && (
-          <span className="integration-message" role="status">
-            {apiMessage}
-          </span>
-        )}
+        <span className="integration-message" role="status">
+          {loading ? "Loading allocation results..." : apiMessage}
+        </span>
       </div>
-
-      {loading && (
-        <p className="status-message" role="status">
-          Loading allocation data...
-        </p>
-      )}
-
-      {!loading && apiMessage && (
-        <p
-          className={`status-message ${
-            dataSource === "backend" ? "success" : "warning"
-          }`}
-          role="status"
-        >
-          {apiMessage}
-        </p>
-      )}
 
       <div className="allocation-summary">
         <div className="allocation-summary-card">
@@ -372,7 +386,10 @@ function AllocationMatrix() {
         </div>
 
         <div className="prescription-actions">
-          <button type="button" onClick={selectEligibleCustomers}>
+          <button
+            type="button"
+            onClick={selectEligibleCustomers}
+          >
             Select Eligible Customers
           </button>
 
@@ -390,8 +407,9 @@ function AllocationMatrix() {
         </div>
 
         <div className="allocation-result-count">
-          Showing {filteredResults.length.toLocaleString("en-IN")} of{" "}
-          {summary.totalCustomers.toLocaleString("en-IN")} customers
+          Showing {firstItem}–{lastItem} of{" "}
+          {filteredResults.length.toLocaleString("en-IN")} filtered
+          customers
         </div>
 
         <div className="allocation-table-wrapper">
@@ -408,8 +426,8 @@ function AllocationMatrix() {
             </thead>
 
             <tbody>
-              {filteredResults.length > 0 ? (
-                filteredResults.map((customer) => (
+              {paginatedResults.length > 0 ? (
+                paginatedResults.map((customer) => (
                   <tr key={customer.customerId}>
                     <td>
                       <input
@@ -483,14 +501,37 @@ function AllocationMatrix() {
             </tbody>
           </table>
         </div>
+
+        <div className="pagination-controls">
+          <button
+            type="button"
+            onClick={() =>
+              setCurrentPage((page) => Math.max(1, page - 1))
+            }
+            disabled={safeCurrentPage === 1}
+          >
+            Previous
+          </button>
+
+          <span>
+            Page {safeCurrentPage} of {totalPages}
+          </span>
+
+          <button
+            type="button"
+            onClick={() =>
+              setCurrentPage((page) =>
+                Math.min(totalPages, page + 1)
+              )
+            }
+            disabled={safeCurrentPage === totalPages}
+          >
+            Next
+          </button>
+        </div>
       </div>
 
-      <div className="allocation-note">
-        <strong>Development note:</strong>{" "}
-        Backend results are used when the API is available. Sample data
-        is displayed as a fallback during development. Discount editing
-        currently changes the frontend estimate only.
-      </div>
+      
     </div>
   );
 }
