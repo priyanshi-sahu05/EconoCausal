@@ -1768,3 +1768,10 @@ display: none;
   font-size: 14px;
   font-weight: 500;
 }
+
+.discount-error {
+  margin: 5px 0 0;
+  color: #dc2626;
+  font-size: 12px;
+  line-height: 1.4;
+}

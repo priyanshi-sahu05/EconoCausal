@@ -13,6 +13,7 @@ function AllocationMatrix() {
   const [error, setError] = useState("");
   const [apiMessage, setApiMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [discountErrors, setDiscountErrors] = useState({});
 
   const itemsPerPage = 10;
 
@@ -199,34 +200,49 @@ function AllocationMatrix() {
     );
   };
 
-  const updateDiscount = (customerId, discountValue) => {
-    if (discountValue === "") return;
+  
+const updateDiscount = (customerId, discountValue) => {
+  const value = discountValue.trim();
 
-    const discount = Number(discountValue);
+  if (value === "") {
+    setDiscountErrors((prev) => ({
+      ...prev,
+      [customerId]: "Discount is required.",
+    }));
+    return;
+  }
 
-    if (
-      !Number.isFinite(discount) ||
-      discount < 0 ||
-      discount > 100
-    ) {
-      window.alert("Enter a discount between 0 and 100.");
-      return;
-    }
+  const discount = Number(value);
 
-    setPrescriptions((previous) =>
-      previous.map((customer) =>
-        customer.customerId === customerId
-          ? {
-              ...customer,
-              recommendedDiscount: discount,
-              estimatedCost: discount * 10,
-              selected:
-                discount === 0 ? false : customer.selected,
-            }
-          : customer
-      )
-    );
-  };
+  if (!Number.isFinite(discount) || discount < 0 || discount > 100) {
+    setDiscountErrors((prev) => ({
+      ...prev,
+      [customerId]: "Enter a discount between 0 and 100.",
+    }));
+    return;
+  }
+
+  setDiscountErrors((prev) => {
+    const updated = { ...prev };
+    delete updated[customerId];
+    return updated;
+  });
+
+  setPrescriptions((prev) =>
+    prev.map((customer) =>
+      customer.customerId === customerId
+        ? {
+            ...customer,
+            recommendedDiscount: discount,
+            estimatedCost: discount * 10,
+            selected:
+              discount === 0 ? false : customer.selected,
+          }
+        : customer
+    )
+  );
+};
+
 
   const selectEligibleCustomers = () => {
     setPrescriptions((previous) =>
@@ -459,21 +475,30 @@ function AllocationMatrix() {
                     </td>
 
                     <td>
-                      <input
-                        className="discount-input"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="5"
-                        value={customer.recommendedDiscount}
-                        onChange={(event) =>
-                          updateDiscount(
-                            customer.customerId,
-                            event.target.value
-                          )
-                        }
-                        aria-label={`Discount for ${customer.customerId}`}
-                      />
+                      
+
+  <input
+    type="number"
+    min="0"
+    max="100"
+    step="1"
+    value={customer.recommendedDiscount}
+    onChange={(event) =>
+      updateDiscount(
+        customer.customerId,
+        event.target.value
+      )
+    }
+    aria-label={`Discount for ${customer.customerId}`}
+    aria-invalid={Boolean(discountErrors[customer.customerId])}
+  />
+
+  {discountErrors[customer.customerId] && (
+    <p className="discount-error">
+      {discountErrors[customer.customerId]}
+    </p>
+  )}
+
                     </td>
 
                     <td>{formatAmount(customer.estimatedCost)}</td>
@@ -531,7 +556,11 @@ function AllocationMatrix() {
         </div>
       </div>
 
-      
+      <div className="allocation-note">
+        <strong>Development note:</strong>{" "}
+        {error ||
+          "Backend results are used when the API is available. Sample data is used as a fallback. Discount editing changes the frontend estimate only."}
+      </div>
     </div>
   );
 }
