@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from "react";
 import allocationResults from "../data/allocationResults";
 import PrescriptionSummary from "../components/PrescriptionSummary";
@@ -14,6 +13,7 @@ function AllocationMatrix() {
   const [apiMessage, setApiMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [discountErrors, setDiscountErrors] = useState({});
+  const [discountDrafts, setDiscountDrafts] = useState({});
 
   const itemsPerPage = 10;
 
@@ -96,17 +96,21 @@ function AllocationMatrix() {
             selected:
               customer.selected !== undefined
                 ? Boolean(customer.selected)
-                : eligible,
+                : eligible && recommendedDiscount > 0,
           };
         });
 
         setPrescriptions(formattedResults);
+        setDiscountErrors({});
+        setDiscountDrafts({});
         setDataSource("backend");
         setApiMessage("Allocation data loaded from backend.");
       } catch {
         if (!active) return;
 
         setPrescriptions(allocationResults);
+        setDiscountErrors({});
+        setDiscountDrafts({});
         setDataSource("mock");
         setError(
           "Backend data is unavailable. Showing sample data instead."
@@ -171,14 +175,19 @@ function AllocationMatrix() {
       (customer) => customer.selected
     );
 
+    const customersWithDiscount = prescriptions.filter(
+      (customer) => Number(customer.recommendedDiscount) > 0
+    );
+
     const totalEstimatedCost = selectedCustomers.reduce(
-      (total, customer) => total + customer.estimatedCost,
+      (total, customer) => total + Number(customer.estimatedCost || 0),
       0
     );
 
     return {
       totalCustomers: prescriptions.length,
       selectedCustomers: selectedCustomers.length,
+      customersWithDiscount: customersWithDiscount.length,
       totalEstimatedCost,
     };
   }, [prescriptions]);
@@ -188,67 +197,82 @@ function AllocationMatrix() {
       style: "currency",
       currency: "INR",
       maximumFractionDigits: 2,
-    }).format(value);
+    }).format(Number(value) || 0);
 
   const toggleSelection = (customerId) => {
     setPrescriptions((previous) =>
+      previous.map((customer) => {
+        if (customer.customerId !== customerId) {
+          return customer;
+        }
+
+        if (Number(customer.recommendedDiscount) <= 0) {
+          return { ...customer, selected: false };
+        }
+
+        return { ...customer, selected: !customer.selected };
+      })
+    );
+  };
+
+  const updateDiscount = (customerId, rawValue) => {
+    const value = String(rawValue).trim();
+
+    setDiscountDrafts((previous) => ({
+      ...previous,
+      [customerId]: rawValue,
+    }));
+
+    if (value === "") {
+      setDiscountErrors((previous) => ({
+        ...previous,
+        [customerId]: "Discount is required.",
+      }));
+      return;
+    }
+
+    const discount = Number(value);
+
+    if (
+      !Number.isFinite(discount) ||
+      discount < 0 ||
+      discount > 100
+    ) {
+      setDiscountErrors((previous) => ({
+        ...previous,
+        [customerId]: "Enter a discount between 0 and 100.",
+      }));
+      return;
+    }
+
+    setDiscountErrors((previous) => {
+      const updated = { ...previous };
+      delete updated[customerId];
+      return updated;
+    });
+
+    setPrescriptions((previous) =>
       previous.map((customer) =>
         customer.customerId === customerId
-          ? { ...customer, selected: !customer.selected }
+          ? {
+              ...customer,
+              recommendedDiscount: discount,
+              estimatedCost: discount * 10,
+              selected:
+                discount === 0 ? false : customer.selected,
+            }
           : customer
       )
     );
   };
 
-  
-const updateDiscount = (customerId, discountValue) => {
-  const value = discountValue.trim();
-
-  if (value === "") {
-    setDiscountErrors((prev) => ({
-      ...prev,
-      [customerId]: "Discount is required.",
-    }));
-    return;
-  }
-
-  const discount = Number(value);
-
-  if (!Number.isFinite(discount) || discount < 0 || discount > 100) {
-    setDiscountErrors((prev) => ({
-      ...prev,
-      [customerId]: "Enter a discount between 0 and 100.",
-    }));
-    return;
-  }
-
-  setDiscountErrors((prev) => {
-    const updated = { ...prev };
-    delete updated[customerId];
-    return updated;
-  });
-
-  setPrescriptions((prev) =>
-    prev.map((customer) =>
-      customer.customerId === customerId
-        ? {
-            ...customer,
-            recommendedDiscount: discount,
-            estimatedCost: discount * 10,
-            selected:
-              discount === 0 ? false : customer.selected,
-          }
-        : customer
-    )
-  );
-};
-
-
   const selectEligibleCustomers = () => {
     setPrescriptions((previous) =>
       previous.map((customer) => ({
         ...customer,
-        selected: customer.eligible,
+        selected:
+          Boolean(customer.eligible) &&
+          Number(customer.recommendedDiscount) > 0,
       }))
     );
   };
@@ -308,7 +332,7 @@ const updateDiscount = (customerId, discountValue) => {
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   return (
@@ -353,7 +377,14 @@ const updateDiscount = (customerId, discountValue) => {
         </div>
 
         <div className="allocation-summary-card">
-          <span>Estimated Spend</span>
+          <span>Customers with Discount</span>
+          <strong>
+            {summary.customersWithDiscount.toLocaleString("en-IN")}
+          </strong>
+        </div>
+
+        <div className="allocation-summary-card">
+          <span>Estimated Selected Spend</span>
           <strong>{formatAmount(summary.totalEstimatedCost)}</strong>
         </div>
 
@@ -442,15 +473,30 @@ const updateDiscount = (customerId, discountValue) => {
             </thead>
 
             <tbody>
-              {paginatedResults.length > 0 ? (
+              {paginatedResults.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="allocation-empty">
+                    <div className="empty-state">
+                      <h3>No customers found</h3>
+                      <p>
+                        Try changing your search term or eligibility
+                        filter.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
                 paginatedResults.map((customer) => (
                   <tr key={customer.customerId}>
                     <td>
                       <input
                         type="checkbox"
-                        checked={customer.selected}
+                        checked={Boolean(customer.selected)}
                         onChange={() =>
                           toggleSelection(customer.customerId)
+                        }
+                        disabled={
+                          Number(customer.recommendedDiscount) <= 0
                         }
                         aria-label={`Select ${customer.customerId}`}
                       />
@@ -470,35 +516,48 @@ const updateDiscount = (customerId, discountValue) => {
                               : "ite-neutral"
                         }
                       >
-                        {customer.ite.toFixed(3)}
+                        {Number(customer.ite).toFixed(3)}
                       </span>
                     </td>
 
                     <td>
-                      
+                      <div className="discount-input-wrapper">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="1"
+                          value={
+                            discountDrafts[customer.customerId] ??
+                            String(customer.recommendedDiscount)
+                          }
+                          onChange={(event) =>
+                            updateDiscount(
+                              customer.customerId,
+                              event.target.value
+                            )
+                          }
+                          aria-label={`Discount for ${customer.customerId}`}
+                          aria-invalid={Boolean(
+                            discountErrors[customer.customerId]
+                          )}
+                          aria-describedby={
+                            discountErrors[customer.customerId]
+                              ? `discount-error-${customer.customerId}`
+                              : undefined
+                          }
+                        />
 
-  <input
-    type="number"
-    min="0"
-    max="100"
-    step="1"
-    value={customer.recommendedDiscount}
-    onChange={(event) =>
-      updateDiscount(
-        customer.customerId,
-        event.target.value
-      )
-    }
-    aria-label={`Discount for ${customer.customerId}`}
-    aria-invalid={Boolean(discountErrors[customer.customerId])}
-  />
-
-  {discountErrors[customer.customerId] && (
-    <p className="discount-error">
-      {discountErrors[customer.customerId]}
-    </p>
-  )}
-
+                        {discountErrors[customer.customerId] && (
+                          <p
+                            id={`discount-error-${customer.customerId}`}
+                            className="discount-error"
+                            role="alert"
+                          >
+                            {discountErrors[customer.customerId]}
+                          </p>
+                        )}
+                      </div>
                     </td>
 
                     <td>{formatAmount(customer.estimatedCost)}</td>
@@ -516,12 +575,6 @@ const updateDiscount = (customerId, discountValue) => {
                     </td>
                   </tr>
                 ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="allocation-empty">
-                    No customers match your filters.
-                  </td>
-                </tr>
               )}
             </tbody>
           </table>
@@ -560,6 +613,7 @@ const updateDiscount = (customerId, discountValue) => {
         <strong>Development note:</strong>{" "}
         {error ||
           "Backend results are used when the API is available. Sample data is used as a fallback. Discount editing changes the frontend estimate only."}
+        {" "}The estimated cost uses a sample formula of discount × 10.
       </div>
     </div>
   );
