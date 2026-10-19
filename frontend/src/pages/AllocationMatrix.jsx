@@ -6,6 +6,7 @@ import { fetchAllocationResults } from "../utils/api";
 function AllocationMatrix() {
   const [searchTerm, setSearchTerm] = useState("");
   const [eligibilityFilter, setEligibilityFilter] = useState("all");
+  const [sortOption, setSortOption] = useState("customer-asc");
   const [prescriptions, setPrescriptions] = useState(allocationResults);
   const [dataSource, setDataSource] = useState("mock");
   const [loading, setLoading] = useState(true);
@@ -19,7 +20,7 @@ function AllocationMatrix() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, eligibilityFilter]);
+  }, [searchTerm, eligibilityFilter, sortOption]);
 
   useEffect(() => {
     let active = true;
@@ -135,7 +136,7 @@ function AllocationMatrix() {
   const filteredResults = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    return prescriptions.filter((customer) => {
+    const filtered = prescriptions.filter((customer) => {
       const matchesSearch = String(customer.customerId)
         .toLowerCase()
         .includes(normalizedSearch);
@@ -147,7 +148,30 @@ function AllocationMatrix() {
 
       return matchesSearch && matchesEligibility;
     });
-  }, [prescriptions, searchTerm, eligibilityFilter]);
+
+    const compareText = (a, b) =>
+      String(a).localeCompare(String(b), undefined, { numeric: true });
+
+    filtered.sort((a, b) => {
+      switch (sortOption) {
+        case "customer-desc":
+          return compareText(b.customerId, a.customerId);
+        case "ite-high":
+          return Number(b.ite) - Number(a.ite);
+        case "ite-low":
+          return Number(a.ite) - Number(b.ite);
+        case "discount-high":
+          return Number(b.recommendedDiscount) - Number(a.recommendedDiscount);
+        case "cost-high":
+          return Number(b.estimatedCost) - Number(a.estimatedCost);
+        case "customer-asc":
+        default:
+          return compareText(a.customerId, b.customerId);
+      }
+    });
+
+    return filtered;
+  }, [prescriptions, searchTerm, eligibilityFilter, sortOption]);
 
   const totalPages = Math.max(
     1,
@@ -428,6 +452,19 @@ function AllocationMatrix() {
               <option value="all">All Customers</option>
               <option value="eligible">Eligible</option>
               <option value="ineligible">Ineligible</option>
+            </select>
+
+            <select
+              value={sortOption}
+              onChange={(event) => setSortOption(event.target.value)}
+              aria-label="Sort allocation results"
+            >
+              <option value="customer-asc">Customer ID (A–Z)</option>
+              <option value="customer-desc">Customer ID (Z–A)</option>
+              <option value="ite-high">ITE Score (Highest)</option>
+              <option value="ite-low">ITE Score (Lowest)</option>
+              <option value="discount-high">Discount (Highest)</option>
+              <option value="cost-high">Estimated Cost (Highest)</option>
             </select>
           </div>
         </div>

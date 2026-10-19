@@ -1827,3 +1827,81 @@ display: none;
     grid-template-columns: 1fr;
   }
 }
+
+/* Allocation summary cards */
+.allocation-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+
+.allocation-summary-card {
+  min-width: 0;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.allocation-summary-card span {
+  display: block;
+  margin-bottom: 12px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.allocation-summary-card strong {
+  color: #1e293b;
+  font-size: 22px;
+  overflow-wrap: anywhere;
+}
+
+/* Discount validation */
+.discount-input-wrapper {
+  min-width: 100px;
+}
+
+.discount-error {
+  margin: 5px 0 0;
+  color: #dc2626;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Empty search results */
+.empty-state {
+  padding: 24px 12px;
+  text-align: center;
+  color: #64748b;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px;
+  color: #1e293b;
+  font-size: 16px;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Responsive layout */
+@media (max-width: 1200px) {
+  .allocation-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .allocation-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .allocation-summary {
+    grid-template-columns: 1fr;
+  }
+}
