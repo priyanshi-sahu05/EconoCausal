@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import allocationResults from "../data/allocationResults";
 import PrescriptionSummary from "../components/PrescriptionSummary";
 import { fetchAllocationResults } from "../utils/api";
@@ -7,9 +8,13 @@ function AllocationMatrix() {
   const [searchTerm, setSearchTerm] = useState("");
   const [eligibilityFilter, setEligibilityFilter] = useState("all");
   const [sortOption, setSortOption] = useState("customer-asc");
-  const [prescriptions, setPrescriptions] = useState(allocationResults);
+
+  const [prescriptions, setPrescriptions] = useState(
+    Array.isArray(allocationResults) ? allocationResults : []
+  );
+
   const [dataSource, setDataSource] = useState("mock");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [apiMessage, setApiMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -18,126 +23,101 @@ function AllocationMatrix() {
 
   const itemsPerPage = 10;
 
+  // Load and normalize allocation data from the backend.
+  const loadAllocationResults = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    setApiMessage("");
+
+    try {
+      const response = await fetchAllocationResults();
+
+      const results = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.results)
+          ? response.results
+          : Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response?.data?.results)
+              ? response.data.results
+              : null;
+
+      if (!results || results.length === 0) {
+        throw new Error("No allocation results returned.");
+      }
+
+      const normalizedResults = results.map((customer, index) => {
+        const discount = Number(customer.recommendedDiscount ?? 0);
+        const ite = Number(customer.ite ?? 0);
+        const estimatedCost = Number(customer.estimatedCost ?? discount * 10);
+
+        const eligible =
+          customer.eligible === true ||
+          customer.eligible === 1 ||
+          String(customer.eligible).toLowerCase() === "true" ||
+          String(customer.eligible) === "1";
+
+        return {
+          ...customer,
+          customerId: String(
+            customer.customerId ?? customer.customer_id ?? `CUSTOMER_${index + 1}`
+          ),
+          ite: Number.isFinite(ite) ? ite : 0,
+          recommendedDiscount:
+            Number.isFinite(discount) && discount >= 0 && discount <= 100
+              ? discount
+              : 0,
+          estimatedCost:
+            Number.isFinite(estimatedCost) && estimatedCost >= 0
+              ? estimatedCost
+              : 0,
+          eligible,
+          selected:
+            eligible &&
+            discount > 0 &&
+            (customer.selected === true ||
+              customer.selected === 1 ||
+              String(customer.selected).toLowerCase() === "true"),
+        };
+      });
+
+      setPrescriptions(normalizedResults);
+      setDataSource("backend");
+      setApiMessage("Allocation results loaded successfully.");
+      setCurrentPage(1);
+      setDiscountErrors({});
+      setDiscountDrafts({});
+    } catch (err) {
+      setPrescriptions(
+        Array.isArray(allocationResults) ? allocationResults : []
+      );
+      setDataSource("mock");
+      setError("Backend data is unavailable. Showing sample data instead.");
+      setApiMessage("Backend unavailable. Showing sample data instead.");
+      setCurrentPage(1);
+      setDiscountErrors({});
+      setDiscountDrafts({});
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Automatically load backend data when the component mounts.
+  useEffect(() => {
+    loadAllocationResults();
+  }, [loadAllocationResults]);
+
+  // Reset pagination when search, filter, or sorting changes.
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, eligibilityFilter, sortOption]);
 
-  useEffect(() => {
-    let active = true;
-
-    const loadAllocationResults = async () => {
-      setLoading(true);
-      setError("");
-      setApiMessage("");
-
-      try {
-        const response = await fetchAllocationResults();
-
-        if (!active) return;
-
-        const results = Array.isArray(response)
-          ? response
-          : response?.results;
-
-        if (!Array.isArray(results) || results.length === 0) {
-          throw new Error("No allocation results returned.");
-        }
-
-        const formattedResults = results.map((customer, index) => {
-          const customerId =
-            customer.customerId ??
-            customer.customer_id ??
-            `C${String(index + 1).padStart(5, "0")}`;
-
-          const rawIte =
-            customer.ite ??
-            customer.ite_score ??
-            customer.treatment_effect ??
-            0;
-
-          const rawDiscount =
-            customer.recommendedDiscount ??
-            customer.recommended_discount ??
-            customer.discount ??
-            0;
-
-          const rawCost =
-            customer.estimatedCost ??
-            customer.estimated_cost ??
-            Number(rawDiscount) * 10;
-
-          const parsedIte = Number(rawIte);
-          const parsedDiscount = Number(rawDiscount);
-          const parsedCost = Number(rawCost);
-
-          const ite = Number.isFinite(parsedIte) ? parsedIte : 0;
-          const recommendedDiscount =
-            Number.isFinite(parsedDiscount) &&
-            parsedDiscount >= 0 &&
-            parsedDiscount <= 100
-              ? parsedDiscount
-              : 0;
-
-          const estimatedCost =
-            Number.isFinite(parsedCost) && parsedCost >= 0
-              ? parsedCost
-              : recommendedDiscount * 10;
-
-          const eligible =
-            customer.eligible !== undefined
-              ? Boolean(customer.eligible)
-              : ite > 0;
-
-          return {
-            customerId: String(customerId),
-            ite,
-            recommendedDiscount,
-            estimatedCost,
-            eligible,
-            selected:
-              customer.selected !== undefined
-                ? Boolean(customer.selected)
-                : eligible && recommendedDiscount > 0,
-          };
-        });
-
-        setPrescriptions(formattedResults);
-        setDiscountErrors({});
-        setDiscountDrafts({});
-        setDataSource("backend");
-        setApiMessage("Allocation data loaded from backend.");
-      } catch {
-        if (!active) return;
-
-        setPrescriptions(allocationResults);
-        setDiscountErrors({});
-        setDiscountDrafts({});
-        setDataSource("mock");
-        setError(
-          "Backend data is unavailable. Showing sample data instead."
-        );
-        setApiMessage(
-          "Backend unavailable. Showing sample data instead."
-        );
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadAllocationResults();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
+  // Search, filter, and sort customers.
   const filteredResults = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
     const filtered = prescriptions.filter((customer) => {
-      const matchesSearch = String(customer.customerId)
+      const matchesSearch = String(customer.customerId ?? "")
         .toLowerCase()
         .includes(normalizedSearch);
 
@@ -150,20 +130,31 @@ function AllocationMatrix() {
     });
 
     const compareText = (a, b) =>
-      String(a).localeCompare(String(b), undefined, { numeric: true });
+      String(a ?? "").localeCompare(String(b ?? ""), undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
 
     filtered.sort((a, b) => {
       switch (sortOption) {
         case "customer-desc":
           return compareText(b.customerId, a.customerId);
+
         case "ite-high":
           return Number(b.ite) - Number(a.ite);
+
         case "ite-low":
           return Number(a.ite) - Number(b.ite);
+
         case "discount-high":
-          return Number(b.recommendedDiscount) - Number(a.recommendedDiscount);
+          return (
+            Number(b.recommendedDiscount) -
+            Number(a.recommendedDiscount)
+          );
+
         case "cost-high":
           return Number(b.estimatedCost) - Number(a.estimatedCost);
+
         case "customer-asc":
         default:
           return compareText(a.customerId, b.customerId);
@@ -173,6 +164,7 @@ function AllocationMatrix() {
     return filtered;
   }, [prescriptions, searchTerm, eligibilityFilter, sortOption]);
 
+  // Calculate pagination.
   const totalPages = Math.max(
     1,
     Math.ceil(filteredResults.length / itemsPerPage)
@@ -194,6 +186,7 @@ function AllocationMatrix() {
     filteredResults.length
   );
 
+  // Calculate dashboard summary values.
   const summary = useMemo(() => {
     const selectedCustomers = prescriptions.filter(
       (customer) => customer.selected
@@ -204,7 +197,8 @@ function AllocationMatrix() {
     );
 
     const totalEstimatedCost = selectedCustomers.reduce(
-      (total, customer) => total + Number(customer.estimatedCost || 0),
+      (total, customer) =>
+        total + (Number(customer.estimatedCost) || 0),
       0
     );
 
@@ -216,6 +210,7 @@ function AllocationMatrix() {
     };
   }, [prescriptions]);
 
+  // Format amounts in Indian currency.
   const formatAmount = (value) =>
     new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -223,6 +218,7 @@ function AllocationMatrix() {
       maximumFractionDigits: 2,
     }).format(Number(value) || 0);
 
+  // Toggle selection for a customer.
   const toggleSelection = (customerId) => {
     setPrescriptions((previous) =>
       previous.map((customer) => {
@@ -230,22 +226,29 @@ function AllocationMatrix() {
           return customer;
         }
 
-        if (Number(customer.recommendedDiscount) <= 0) {
+        if (
+          !customer.eligible ||
+          Number(customer.recommendedDiscount) <= 0
+        ) {
           return { ...customer, selected: false };
         }
 
-        return { ...customer, selected: !customer.selected };
+        return {
+          ...customer,
+          selected: !customer.selected,
+        };
       })
     );
   };
 
+  // Validate and update the recommended discount.
   const updateDiscount = (customerId, rawValue) => {
-    const value = String(rawValue).trim();
-
     setDiscountDrafts((previous) => ({
       ...previous,
       [customerId]: rawValue,
     }));
+
+    const value = String(rawValue).trim();
 
     if (value === "") {
       setDiscountErrors((previous) => ({
@@ -276,31 +279,38 @@ function AllocationMatrix() {
     });
 
     setPrescriptions((previous) =>
-      previous.map((customer) =>
-        customer.customerId === customerId
-          ? {
-              ...customer,
-              recommendedDiscount: discount,
-              estimatedCost: discount * 10,
-              selected:
-                discount === 0 ? false : customer.selected,
-            }
-          : customer
-      )
+      previous.map((customer) => {
+        if (customer.customerId !== customerId) {
+          return customer;
+        }
+
+        return {
+          ...customer,
+          recommendedDiscount: discount,
+          estimatedCost: discount * 10,
+          selected:
+            discount === 0 || !customer.eligible
+              ? false
+              : customer.selected,
+        };
+      })
     );
   };
 
+  // Select all eligible customers with a positive discount.
   const selectEligibleCustomers = () => {
     setPrescriptions((previous) =>
       previous.map((customer) => ({
         ...customer,
         selected:
           Boolean(customer.eligible) &&
-          Number(customer.recommendedDiscount) > 0,
+          Number(customer.recommendedDiscount) > 0 &&
+          !discountErrors[customer.customerId],
       }))
     );
   };
 
+  // Clear all selections.
   const clearSelection = () => {
     setPrescriptions((previous) =>
       previous.map((customer) => ({
@@ -310,6 +320,7 @@ function AllocationMatrix() {
     );
   };
 
+  // Export filtered results to CSV.
   const exportToCSV = () => {
     if (filteredResults.length === 0) {
       window.alert("No allocation results available to export.");
@@ -356,7 +367,8 @@ function AllocationMatrix() {
     document.body.appendChild(link);
     link.click();
     link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (
@@ -383,6 +395,12 @@ function AllocationMatrix() {
         <span className="integration-message" role="status">
           {loading ? "Loading allocation results..." : apiMessage}
         </span>
+
+        {error && (
+          <span className="integration-error" role="alert">
+            {error}
+          </span>
+        )}
       </div>
 
       <div className="allocation-summary">
@@ -473,11 +491,16 @@ function AllocationMatrix() {
           <button
             type="button"
             onClick={selectEligibleCustomers}
+            disabled={loading}
           >
             Select Eligible Customers
           </button>
 
-          <button type="button" onClick={clearSelection}>
+          <button
+            type="button"
+            onClick={clearSelection}
+            disabled={loading}
+          >
             Clear Selection
           </button>
 
@@ -533,7 +556,9 @@ function AllocationMatrix() {
                           toggleSelection(customer.customerId)
                         }
                         disabled={
-                          Number(customer.recommendedDiscount) <= 0
+                          !customer.eligible ||
+                          Number(customer.recommendedDiscount) <= 0 ||
+                          Boolean(discountErrors[customer.customerId])
                         }
                         aria-label={`Select ${customer.customerId}`}
                       />
@@ -546,9 +571,9 @@ function AllocationMatrix() {
                     <td>
                       <span
                         className={
-                          customer.ite > 0
+                          Number(customer.ite) > 0
                             ? "ite-positive"
-                            : customer.ite < 0
+                            : Number(customer.ite) < 0
                               ? "ite-negative"
                               : "ite-neutral"
                         }
@@ -644,6 +669,17 @@ function AllocationMatrix() {
             Next
           </button>
         </div>
+      </div>
+
+      <div className="allocation-refresh">
+        <button
+          type="button"
+          onClick={loadAllocationResults}
+          disabled={loading}
+          aria-busy={loading}
+        >
+          {loading ? "Refreshing..." : "Refresh Data"}
+        </button>
       </div>
 
       <div className="allocation-note">
