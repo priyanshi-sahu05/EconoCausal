@@ -4,120 +4,125 @@ import allocationResults from "../data/allocationResults";
 import PrescriptionSummary from "../components/PrescriptionSummary";
 import { fetchAllocationResults } from "../utils/api";
 
+const ITEMS_PER_PAGE = 10;
+
+function normalizeCustomer(customer, index) {
+  const customerId =
+    customer.customerId ??
+    customer.customer_id ??
+    customer.id ??
+    `CUST-${index + 1}`;
+
+  const rawEligibility = customer.eligible ?? customer.is_eligible ?? false;
+  const eligible =
+    rawEligibility === true ||
+    rawEligibility === 1 ||
+    String(rawEligibility).toLowerCase() === "true" ||
+    String(rawEligibility) === "1";
+
+  const discount = Number(
+    customer.recommendedDiscount ??
+      customer.recommended_discount ??
+      0
+  );
+
+  return {
+    ...customer,
+    customerId: String(customerId),
+    ite: Number(customer.ite ?? customer.ite_score ?? 0),
+    recommendedDiscount: Number.isFinite(discount) ? discount : 0,
+    estimatedCost: Number(
+      customer.estimatedCost ?? customer.estimated_cost ?? 0
+    ),
+    eligible,
+    selected: Boolean(customer.selected),
+  };
+}
+
 function AllocationMatrix() {
   const [searchTerm, setSearchTerm] = useState("");
   const [eligibilityFilter, setEligibilityFilter] = useState("all");
   const [sortOption, setSortOption] = useState("customer-asc");
-
   const [prescriptions, setPrescriptions] = useState(
-    Array.isArray(allocationResults) ? allocationResults : []
+    () => allocationResults.map(normalizeCustomer)
   );
-
   const [dataSource, setDataSource] = useState("mock");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [apiMessage, setApiMessage] = useState("");
+  const [apiMessage, setApiMessage] = useState(
+    "Sample data is currently displayed."
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [discountErrors, setDiscountErrors] = useState({});
   const [discountDrafts, setDiscountDrafts] = useState({});
 
-  const itemsPerPage = 10;
-
-  // Load and normalize allocation data from the backend.
   const loadAllocationResults = useCallback(async () => {
     setLoading(true);
     setError("");
-    setApiMessage("");
+    setApiMessage("Loading allocation results...");
 
     try {
       const response = await fetchAllocationResults();
 
       const results = Array.isArray(response)
         ? response
-        : Array.isArray(response?.results)
-          ? response.results
-          : Array.isArray(response?.data)
-            ? response.data
-            : Array.isArray(response?.data?.results)
-              ? response.data.results
-              : null;
+        : response?.results ??
+          response?.data?.results ??
+          response?.data;
 
-      if (!results || results.length === 0) {
-        throw new Error("No allocation results returned.");
+      if (!Array.isArray(results) || results.length === 0) {
+        throw new Error("No allocation results returned by the API.");
       }
 
-      const normalizedResults = results.map((customer, index) => {
-        const discount = Number(customer.recommendedDiscount ?? 0);
-        const ite = Number(customer.ite ?? 0);
-        const estimatedCost = Number(customer.estimatedCost ?? discount * 10);
-
-        const eligible =
-          customer.eligible === true ||
-          customer.eligible === 1 ||
-          String(customer.eligible).toLowerCase() === "true" ||
-          String(customer.eligible) === "1";
-
-        return {
-          ...customer,
-          customerId: String(
-            customer.customerId ?? customer.customer_id ?? `CUSTOMER_${index + 1}`
-          ),
-          ite: Number.isFinite(ite) ? ite : 0,
-          recommendedDiscount:
-            Number.isFinite(discount) && discount >= 0 && discount <= 100
-              ? discount
-              : 0,
-          estimatedCost:
-            Number.isFinite(estimatedCost) && estimatedCost >= 0
-              ? estimatedCost
-              : 0,
-          eligible,
-          selected:
-            eligible &&
-            discount > 0 &&
-            (customer.selected === true ||
-              customer.selected === 1 ||
-              String(customer.selected).toLowerCase() === "true"),
-        };
-      });
+      const normalizedResults = results.map(normalizeCustomer);
 
       setPrescriptions(normalizedResults);
       setDataSource("backend");
-      setApiMessage("Allocation results loaded successfully.");
       setCurrentPage(1);
       setDiscountErrors({});
       setDiscountDrafts({});
-    } catch (err) {
-      setPrescriptions(
-        Array.isArray(allocationResults) ? allocationResults : []
+      setApiMessage(
+        `${normalizedResults.length.toLocaleString("en-IN")} records loaded from the backend.`
       );
+    } catch (requestError) {
+      const fallbackResults = Array.isArray(allocationResults)
+        ? allocationResults.map(normalizeCustomer)
+        : [];
+
+      setPrescriptions(fallbackResults);
       setDataSource("mock");
-      setError("Backend data is unavailable. Showing sample data instead.");
-      setApiMessage("Backend unavailable. Showing sample data instead.");
       setCurrentPage(1);
       setDiscountErrors({});
       setDiscountDrafts({});
+      setError(
+        requestError?.message || "Unable to load backend data."
+      );
+      setApiMessage("Backend unavailable. Showing sample data.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Automatically load backend data when the component mounts.
   useEffect(() => {
     loadAllocationResults();
   }, [loadAllocationResults]);
 
-  // Reset pagination when search, filter, or sorting changes.
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, eligibilityFilter, sortOption]);
 
-  // Search, filter, and sort customers.
+  const formatAmount = (value) =>
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 2,
+    }).format(Number(value) || 0);
+
   const filteredResults = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
     const filtered = prescriptions.filter((customer) => {
-      const matchesSearch = String(customer.customerId ?? "")
+      const matchesSearch = customer.customerId
         .toLowerCase()
         .includes(normalizedSearch);
 
@@ -130,7 +135,7 @@ function AllocationMatrix() {
     });
 
     const compareText = (a, b) =>
-      String(a ?? "").localeCompare(String(b ?? ""), undefined, {
+      String(a).localeCompare(String(b), undefined, {
         numeric: true,
         sensitivity: "base",
       });
@@ -139,22 +144,14 @@ function AllocationMatrix() {
       switch (sortOption) {
         case "customer-desc":
           return compareText(b.customerId, a.customerId);
-
         case "ite-high":
-          return Number(b.ite) - Number(a.ite);
-
+          return b.ite - a.ite;
         case "ite-low":
-          return Number(a.ite) - Number(b.ite);
-
+          return a.ite - b.ite;
         case "discount-high":
-          return (
-            Number(b.recommendedDiscount) -
-            Number(a.recommendedDiscount)
-          );
-
+          return b.recommendedDiscount - a.recommendedDiscount;
         case "cost-high":
-          return Number(b.estimatedCost) - Number(a.estimatedCost);
-
+          return b.estimatedCost - a.estimatedCost;
         case "customer-asc":
         default:
           return compareText(a.customerId, b.customerId);
@@ -164,41 +161,17 @@ function AllocationMatrix() {
     return filtered;
   }, [prescriptions, searchTerm, eligibilityFilter, sortOption]);
 
-  // Calculate pagination.
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredResults.length / itemsPerPage)
-  );
-
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
-
-  const paginatedResults = filteredResults.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
-
-  const firstItem =
-    filteredResults.length === 0 ? 0 : startIndex + 1;
-
-  const lastItem = Math.min(
-    startIndex + itemsPerPage,
-    filteredResults.length
-  );
-
-  // Calculate dashboard summary values.
   const summary = useMemo(() => {
     const selectedCustomers = prescriptions.filter(
       (customer) => customer.selected
     );
 
     const customersWithDiscount = prescriptions.filter(
-      (customer) => Number(customer.recommendedDiscount) > 0
+      (customer) => customer.recommendedDiscount > 0
     );
 
     const totalEstimatedCost = selectedCustomers.reduce(
-      (total, customer) =>
-        total + (Number(customer.estimatedCost) || 0),
+      (total, customer) => total + customer.estimatedCost,
       0
     );
 
@@ -210,15 +183,27 @@ function AllocationMatrix() {
     };
   }, [prescriptions]);
 
-  // Format amounts in Indian currency.
-  const formatAmount = (value) =>
-    new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      maximumFractionDigits: 2,
-    }).format(Number(value) || 0);
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredResults.length / ITEMS_PER_PAGE)
+  );
 
-  // Toggle selection for a customer.
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+
+  const paginatedResults = filteredResults.slice(
+    startIndex,
+    startIndex + ITEMS_PER_PAGE
+  );
+
+  const firstItem =
+    filteredResults.length === 0 ? 0 : startIndex + 1;
+
+  const lastItem = Math.min(
+    startIndex + ITEMS_PER_PAGE,
+    filteredResults.length
+  );
+
   const toggleSelection = (customerId) => {
     setPrescriptions((previous) =>
       previous.map((customer) => {
@@ -228,7 +213,7 @@ function AllocationMatrix() {
 
         if (
           !customer.eligible ||
-          Number(customer.recommendedDiscount) <= 0
+          customer.recommendedDiscount <= 0
         ) {
           return { ...customer, selected: false };
         }
@@ -241,7 +226,6 @@ function AllocationMatrix() {
     );
   };
 
-  // Validate and update the recommended discount.
   const updateDiscount = (customerId, rawValue) => {
     setDiscountDrafts((previous) => ({
       ...previous,
@@ -279,38 +263,31 @@ function AllocationMatrix() {
     });
 
     setPrescriptions((previous) =>
-      previous.map((customer) => {
-        if (customer.customerId !== customerId) {
-          return customer;
-        }
-
-        return {
-          ...customer,
-          recommendedDiscount: discount,
-          estimatedCost: discount * 10,
-          selected:
-            discount === 0 || !customer.eligible
-              ? false
-              : customer.selected,
-        };
-      })
+      previous.map((customer) =>
+        customer.customerId === customerId
+          ? {
+              ...customer,
+              recommendedDiscount: discount,
+              estimatedCost: discount * 10,
+              selected:
+                discount === 0 ? false : customer.selected,
+            }
+          : customer
+      )
     );
   };
 
-  // Select all eligible customers with a positive discount.
   const selectEligibleCustomers = () => {
     setPrescriptions((previous) =>
       previous.map((customer) => ({
         ...customer,
         selected:
-          Boolean(customer.eligible) &&
-          Number(customer.recommendedDiscount) > 0 &&
-          !discountErrors[customer.customerId],
+          customer.eligible &&
+          customer.recommendedDiscount > 0,
       }))
     );
   };
 
-  // Clear all selections.
   const clearSelection = () => {
     setPrescriptions((previous) =>
       previous.map((customer) => ({
@@ -320,7 +297,6 @@ function AllocationMatrix() {
     );
   };
 
-  // Export filtered results to CSV.
   const exportToCSV = () => {
     if (filteredResults.length === 0) {
       window.alert("No allocation results available to export.");
@@ -329,17 +305,15 @@ function AllocationMatrix() {
 
     const headers = [
       "Customer ID",
-      "ITE",
+      "ITE Score",
       "Recommended Discount",
       "Estimated Cost",
       "Eligible",
       "Selected",
     ];
 
-    const escapeCSV = (value) => {
-      const text = String(value ?? "");
-      return `"${text.replace(/"/g, '""')}"`;
-    };
+    const escapeCSV = (value) =>
+      `"${String(value ?? "").replace(/"/g, '""')}"`;
 
     const rows = filteredResults.map((customer) => [
       customer.customerId,
@@ -363,7 +337,6 @@ function AllocationMatrix() {
 
     link.href = url;
     link.download = "econocausal_allocation_results.csv";
-
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -372,82 +345,90 @@ function AllocationMatrix() {
   };
 
   return (
-    <div className="allocation-page">
-      <div className="page-header">
+    <main className="allocation-page">
+      <header className="page-header">
         <h1>Customer Prescriptions</h1>
         <p>
           Review recommended discounts and select customers
           for the marketing campaign.
         </p>
-      </div>
+      </header>
 
-      <div className="integration-status">
+      <section className="integration-status">
         <span
-          className={
-            dataSource === "backend"
-              ? "integration-badge backend"
-              : "integration-badge mock"
-          }
+          className={`integration-badge ${
+            dataSource === "backend" ? "backend" : "mock"
+          }`}
         >
           {dataSource === "backend" ? "Backend Data" : "Sample Data"}
         </span>
 
         <span className="integration-message" role="status">
-          {loading ? "Loading allocation results..." : apiMessage}
+          {apiMessage}
         </span>
 
-        {error && (
-          <span className="integration-error" role="alert">
-            {error}
-          </span>
-        )}
-      </div>
+        <button
+          type="button"
+          onClick={loadAllocationResults}
+          disabled={loading}
+          aria-busy={loading}
+        >
+          {loading ? "Refreshing..." : "Refresh Data"}
+        </button>
+      </section>
 
-      <div className="allocation-summary">
-        <div className="allocation-summary-card">
+      {error && (
+        <p className="allocation-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      <section className="allocation-summary">
+        <article className="allocation-summary-card">
           <span>Total Customers</span>
           <strong>
             {summary.totalCustomers.toLocaleString("en-IN")}
           </strong>
-        </div>
+        </article>
 
-        <div className="allocation-summary-card">
+        <article className="allocation-summary-card">
           <span>Selected Customers</span>
           <strong>
             {summary.selectedCustomers.toLocaleString("en-IN")}
           </strong>
-        </div>
+        </article>
 
-        <div className="allocation-summary-card">
+        <article className="allocation-summary-card">
           <span>Customers with Discount</span>
           <strong>
             {summary.customersWithDiscount.toLocaleString("en-IN")}
           </strong>
-        </div>
+        </article>
 
-        <div className="allocation-summary-card">
+        <article className="allocation-summary-card">
           <span>Estimated Selected Spend</span>
           <strong>{formatAmount(summary.totalEstimatedCost)}</strong>
-        </div>
+        </article>
 
-        <div className="allocation-summary-card">
+        <article className="allocation-summary-card">
           <span>Unselected Customers</span>
           <strong>
             {(
               summary.totalCustomers - summary.selectedCustomers
             ).toLocaleString("en-IN")}
           </strong>
-        </div>
-      </div>
+        </article>
+      </section>
 
       <PrescriptionSummary prescriptions={prescriptions} />
 
-      <div className="allocation-table-card">
-        <div className="allocation-table-header">
+      <section className="allocation-table-card">
+        <header className="allocation-table-header">
           <div>
             <h2>Prescription Details</h2>
             <p>
-              Select customers and adjust discount values for testing.
+              Search customers, adjust discount values, and manage
+              campaign selection.
             </p>
           </div>
 
@@ -485,22 +466,17 @@ function AllocationMatrix() {
               <option value="cost-high">Estimated Cost (Highest)</option>
             </select>
           </div>
-        </div>
+        </header>
 
         <div className="prescription-actions">
           <button
             type="button"
             onClick={selectEligibleCustomers}
-            disabled={loading}
           >
             Select Eligible Customers
           </button>
 
-          <button
-            type="button"
-            onClick={clearSelection}
-            disabled={loading}
-          >
+          <button type="button" onClick={clearSelection}>
             Clear Selection
           </button>
 
@@ -513,11 +489,11 @@ function AllocationMatrix() {
           </button>
         </div>
 
-        <div className="allocation-result-count">
+        <p className="allocation-result-count" aria-live="polite">
           Showing {firstItem}–{lastItem} of{" "}
           {filteredResults.length.toLocaleString("en-IN")} filtered
           customers
-        </div>
+        </p>
 
         <div className="allocation-table-wrapper">
           <table className="allocation-table">
@@ -557,8 +533,7 @@ function AllocationMatrix() {
                         }
                         disabled={
                           !customer.eligible ||
-                          Number(customer.recommendedDiscount) <= 0 ||
-                          Boolean(discountErrors[customer.customerId])
+                          customer.recommendedDiscount <= 0
                         }
                         aria-label={`Select ${customer.customerId}`}
                       />
@@ -571,14 +546,14 @@ function AllocationMatrix() {
                     <td>
                       <span
                         className={
-                          Number(customer.ite) > 0
+                          customer.ite > 0
                             ? "ite-positive"
-                            : Number(customer.ite) < 0
+                            : customer.ite < 0
                               ? "ite-negative"
                               : "ite-neutral"
                         }
                       >
-                        {Number(customer.ite).toFixed(3)}
+                        {customer.ite.toFixed(3)}
                       </span>
                     </td>
 
@@ -642,7 +617,7 @@ function AllocationMatrix() {
           </table>
         </div>
 
-        <div className="pagination-controls">
+        <nav className="pagination-controls" aria-label="Table pagination">
           <button
             type="button"
             onClick={() =>
@@ -668,27 +643,17 @@ function AllocationMatrix() {
           >
             Next
           </button>
-        </div>
-      </div>
+        </nav>
+      </section>
 
-      <div className="allocation-refresh">
-        <button
-          type="button"
-          onClick={loadAllocationResults}
-          disabled={loading}
-          aria-busy={loading}
-        >
-          {loading ? "Refreshing..." : "Refresh Data"}
-        </button>
-      </div>
-
-      <div className="allocation-note">
+      <aside className="allocation-note">
         <strong>Development note:</strong>{" "}
-        {error ||
-          "Backend results are used when the API is available. Sample data is used as a fallback. Discount editing changes the frontend estimate only."}
-        {" "}The estimated cost uses a sample formula of discount × 10.
-      </div>
-    </div>
+        API data is used when available; otherwise, sample data is
+        displayed. Discount editing updates the frontend estimate only.
+        The example estimated-cost formula is discount × 10 and must
+        be replaced with your actual optimization calculation.
+      </aside>
+    </main>
   );
 }
 

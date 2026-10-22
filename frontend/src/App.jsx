@@ -6,6 +6,7 @@ import DataUpload from "./pages/DataUpload";
 import BudgetInput from "./pages/BudgetInput";
 import Visualizations from "./pages/Visualizations";
 import AllocationMatrix from "./pages/AllocationMatrix";
+import BudgetConstraints from "./pages/BudgetConstraints";
 
 function App() {
   return (
@@ -38,6 +39,10 @@ function App() {
               path="/allocation"
               element={<AllocationMatrix />}
             />
+             <Route
+              path="/budget-constraints"
+              element={<BudgetConstraints />}
+           />
           </Routes>
         </main>
       </div>
