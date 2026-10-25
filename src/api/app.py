@@ -1,9 +1,11 @@
 from flask import Flask, jsonify
+from flask_cors import CORS
 import pandas as pd
 from pathlib import Path
 import sys
 
 app = Flask(__name__)
+CORS(app)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_PATH = PROJECT_ROOT / "data" / "retail_data.csv"
@@ -67,6 +69,20 @@ def drift_check():
         "current_rows": len(current_df),
         "note": "Demo comparison of two dataset portions, not live production drift.",
         "drift_results": results
+    })
+
+@app.route("/allocation-results", methods=["GET"])
+def allocation_results():
+    results_path = PROJECT_ROOT / "data" / "optimization_results.csv"
+
+    if not results_path.exists():
+        return jsonify({"error": "Allocation results not found"}), 404
+
+    df = pd.read_csv(results_path)
+
+    return jsonify({
+        "count": len(df),
+        "results": df.to_dict(orient="records")
     })
 
 
