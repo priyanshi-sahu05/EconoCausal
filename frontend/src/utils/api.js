@@ -1,26 +1,29 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+export const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
+).replace(/\/+$/, "");
 
-async function request(endpoint, errorMessage) {
+async function request(endpoint) {
   const response = await fetch(`${API_BASE_URL}${endpoint}`);
 
   if (!response.ok) {
-    throw new Error(errorMessage);
+    throw new Error(`${endpoint} failed with HTTP ${response.status}`);
   }
 
   return response.json();
 }
 
 export function checkBackendHealth() {
-  return request("/health", "Backend health check failed");
+  return request("/health");
 }
 
-export function fetchPredictions() {
-  return request("/predict", "Failed to fetch predictions");
+export function fetchDataSummary() {
+  return request("/data-summary");
+}
+
+export function fetchDriftCheck() {
+  return request("/drift-check");
 }
 
 export function fetchAllocationResults() {
-  return request("/allocation", "Failed to fetch allocation results");
+  return request("/allocation-results");
 }
-
-export { API_BASE_URL };

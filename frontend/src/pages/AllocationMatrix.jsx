@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import allocationResults from "../data/allocationResults";
 import PrescriptionSummary from "../components/PrescriptionSummary";
@@ -13,29 +12,54 @@ function normalizeCustomer(customer, index) {
     customer.id ??
     `CUST-${index + 1}`;
 
-  const rawEligibility = customer.eligible ?? customer.is_eligible ?? false;
-  const eligible =
-    rawEligibility === true ||
-    rawEligibility === 1 ||
-    String(rawEligibility).toLowerCase() === "true" ||
-    String(rawEligibility) === "1";
-
-  const discount = Number(
+  const discountValue = Number(
     customer.recommendedDiscount ??
       customer.recommended_discount ??
+      customer.assigned_discount ??
+      customer.assignedDiscount ??
+      customer.optimal_discount ??
+      customer.optimalDiscount ??
+      0
+  );
+
+  const recommendedDiscount = Number.isFinite(discountValue)
+    ? discountValue
+    : 0;
+
+  const rawEligibility =
+    customer.eligible ?? customer.is_eligible ?? customer.isEligible;
+
+  let eligible;
+
+  if (rawEligibility === undefined || rawEligibility === null || rawEligibility === "") {
+    eligible = recommendedDiscount > 0;
+  } else {
+    eligible = ["true", "1", "yes"].includes(
+      String(rawEligibility).trim().toLowerCase()
+    );
+  }
+
+  const iteValue = Number(customer.ite ?? customer.ite_score ?? 0);
+  const estimatedCostValue = Number(
+    customer.estimatedCost ??
+      customer.estimated_cost ??
+      customer.total_cost ??
       0
   );
 
   return {
     ...customer,
     customerId: String(customerId),
-    ite: Number(customer.ite ?? customer.ite_score ?? 0),
-    recommendedDiscount: Number.isFinite(discount) ? discount : 0,
-    estimatedCost: Number(
-      customer.estimatedCost ?? customer.estimated_cost ?? 0
-    ),
+    ite: Number.isFinite(iteValue) ? iteValue : 0,
+    recommendedDiscount,
+    estimatedCost: Number.isFinite(estimatedCostValue)
+      ? estimatedCostValue
+      : 0,
     eligible,
-    selected: Boolean(customer.selected),
+    selected:
+      Boolean(customer.selected) &&
+      eligible &&
+      recommendedDiscount > 0,
   };
 }
 
@@ -43,8 +67,10 @@ function AllocationMatrix() {
   const [searchTerm, setSearchTerm] = useState("");
   const [eligibilityFilter, setEligibilityFilter] = useState("all");
   const [sortOption, setSortOption] = useState("customer-asc");
-  const [prescriptions, setPrescriptions] = useState(
-    () => allocationResults.map(normalizeCustomer)
+  const [prescriptions, setPrescriptions] = useState(() =>
+    allocationResults.map((customer, index) =>
+      normalizeCustomer(customer, index)
+    )
   );
   const [dataSource, setDataSource] = useState("mock");
   const [loading, setLoading] = useState(false);
@@ -74,7 +100,9 @@ function AllocationMatrix() {
         throw new Error("No allocation results returned by the API.");
       }
 
-      const normalizedResults = results.map(normalizeCustomer);
+      const normalizedResults = results.map((customer, index) =>
+        normalizeCustomer(customer, index)
+      );
 
       setPrescriptions(normalizedResults);
       setDataSource("backend");
@@ -86,7 +114,9 @@ function AllocationMatrix() {
       );
     } catch (requestError) {
       const fallbackResults = Array.isArray(allocationResults)
-        ? allocationResults.map(normalizeCustomer)
+        ? allocationResults.map((customer, index) =>
+            normalizeCustomer(customer, index)
+          )
         : [];
 
       setPrescriptions(fallbackResults);
@@ -177,6 +207,9 @@ function AllocationMatrix() {
 
     return {
       totalCustomers: prescriptions.length,
+      eligibleCustomers: prescriptions.filter(
+        (customer) => customer.eligible
+      ).length,
       selectedCustomers: selectedCustomers.length,
       customersWithDiscount: customersWithDiscount.length,
       totalEstimatedCost,
@@ -196,9 +229,7 @@ function AllocationMatrix() {
     startIndex + ITEMS_PER_PAGE
   );
 
-  const firstItem =
-    filteredResults.length === 0 ? 0 : startIndex + 1;
-
+  const firstItem = filteredResults.length === 0 ? 0 : startIndex + 1;
   const lastItem = Math.min(
     startIndex + ITEMS_PER_PAGE,
     filteredResults.length
@@ -270,7 +301,9 @@ function AllocationMatrix() {
               recommendedDiscount: discount,
               estimatedCost: discount * 10,
               selected:
-                discount === 0 ? false : customer.selected,
+                discount === 0 || !customer.eligible
+                  ? false
+                  : customer.selected,
             }
           : customer
       )
@@ -388,6 +421,13 @@ function AllocationMatrix() {
           <span>Total Customers</span>
           <strong>
             {summary.totalCustomers.toLocaleString("en-IN")}
+          </strong>
+        </article>
+
+        <article className="allocation-summary-card">
+          <span>Eligible Customers</span>
+          <strong>
+            {summary.eligibleCustomers.toLocaleString("en-IN")}
           </strong>
         </article>
 
@@ -563,7 +603,7 @@ function AllocationMatrix() {
                           type="number"
                           min="0"
                           max="100"
-                          step="1"
+                          step="0.01"
                           value={
                             discountDrafts[customer.customerId] ??
                             String(customer.recommendedDiscount)
@@ -649,9 +689,12 @@ function AllocationMatrix() {
       <aside className="allocation-note">
         <strong>Development note:</strong>{" "}
         API data is used when available; otherwise, sample data is
-        displayed. Discount editing updates the frontend estimate only.
-        The example estimated-cost formula is discount × 10 and must
-        be replaced with your actual optimization calculation.
+        displayed. When the API omits eligibility, this component
+        temporarily treats a positive recommended discount as eligible.
+        Confirm the actual eligibility rule with the optimization logic.
+        Discount editing updates the frontend estimate only. The example
+        estimated-cost formula is discount × 10 and must be replaced with
+        the actual optimization calculation.
       </aside>
     </main>
   );

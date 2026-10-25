@@ -1,5 +1,5 @@
 import Plot from "react-plotly.js";
-import { prepareQiniData } from "../../utils/causalMetrics";
+import { prepareQiniData } from "../../utils/causalMetrics.js";
 import { sampleResults } from "../../utils/chartData";
 
 function QiniChart({ results }) {
