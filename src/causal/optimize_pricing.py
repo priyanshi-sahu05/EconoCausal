@@ -6,7 +6,7 @@ ite = pd.read_csv("data/ite_results.csv")
 
 # Budget and discount options
 budget = 10000
-discount_levels = [5, 10, 15, 20, 25, 30]
+discount_levels = [2, 5, 8, 10, 12, 15]
 customers = 100
 
 # Average estimated treatment effect from DML
