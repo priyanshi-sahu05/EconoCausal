@@ -1,3 +1,6 @@
 EconoCausal Integration Summary
 ========================================
-Total customers: 6
+Customers with ITE estimates: 200
+Discount options evaluated: 6
+Average estimated treatment effect: -34.07
+Note: Discount revenue estimates are illustrative, not validated causal counterfactual predictions.

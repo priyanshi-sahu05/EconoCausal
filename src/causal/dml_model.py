@@ -54,7 +54,7 @@ print(treatment_effect.mean())
 
 # Save Individual Treatment Effects
 results = pd.DataFrame({
-    "customer_id": range(1, len(treatment_effect) + 1),
+    "customer_id": X_test.index + 1,
     "estimated_treatment_effect": treatment_effect
 })
 
