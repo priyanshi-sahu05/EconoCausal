@@ -1,67 +1,36 @@
+from pathlib import Path
 import pandas as pd
 
-# Load optimization results
-results = pd.read_csv("data/optimization_results.csv")
+BASE_DIR = Path(__file__).resolve().parents[2]
+DATA_DIR = BASE_DIR / "data"
 
-print("Optimization results loaded successfully!")
-print("Customers:", len(results))
+results = pd.read_csv(DATA_DIR / "optimization_results.csv")
 
-# Marketing budget
-BUDGET = 100
-
-# Maximum discount allowed per customer
-MAX_DISCOUNT = 20
-
-# Sort customers by predicted revenue
-results = results.sort_values(
-    by="predicted_revenue",
-    ascending=False
-).reset_index(drop=True)
-
-# Assign personalized discounts under budget
-remaining_budget = BUDGET
-assigned_discounts = []
-
-for _, row in results.iterrows():
-
-    requested_discount = min(
-        row["optimal_discount"],
-        MAX_DISCOUNT
+required_columns = {"discount", "estimated_revenue", "total_cost"}
+if not required_columns.issubset(results.columns):
+    raise ValueError(
+        f"Missing required columns: {required_columns - set(results.columns)}"
     )
 
-    if remaining_budget >= requested_discount:
-        discount = requested_discount
-    else:
-        discount = max(0, remaining_budget)
+BUDGET = 10000
 
-    assigned_discounts.append(round(discount, 2))
-    remaining_budget -= discount
+results = results.dropna(subset=list(required_columns))
+feasible = results[results["total_cost"] <= BUDGET].copy()
 
-results["assigned_discount"] = assigned_discounts
+if feasible.empty:
+    raise ValueError("No discount options fit within the budget.")
 
-# Save final allocation
-results.to_csv(
-    "data/personalized_discount_allocation.csv",
-    index=False
-)
+best_option = feasible.loc[feasible["estimated_revenue"].idxmax()]
 
-print("\nPersonalized discount allocation completed!")
-print("Marketing budget:", BUDGET)
-print("Budget used:", round(results["assigned_discount"].sum(), 2))
-print("Budget remaining:", round(remaining_budget, 2))
+feasible["selected"] = feasible.index == best_option.name
+output_file = DATA_DIR / "pricing_option_summary.csv"
+feasible.to_csv(output_file, index=False)
 
-print("\nFinal Discount Allocation:")
-print(
-    results[
-        [
-            "customer_id",
-            "assigned_discount",
-            "predicted_revenue"
-        ]
-    ]
-)
-
-print(
-    "\nResults saved to "
-    "data/personalized_discount_allocation.csv"
-)
+print("Pricing option analysis completed.")
+print("Available budget:", BUDGET)
+print("Options evaluated:", len(feasible))
+print("Selected discount:", best_option["discount"])
+print("Illustrative revenue per customer:", round(best_option["estimated_revenue"], 2))
+print("Estimated marketing cost:", round(best_option["total_cost"], 2))
+print("Saved:", output_file)
+print("Note: Revenue values are illustrative, not validated causal predictions.")
