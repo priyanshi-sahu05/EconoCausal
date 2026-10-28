@@ -86,6 +86,9 @@ The project generates or uses the following result files:
 - "data/causal_optimization_integrated.csv" — integrated optimization output.
 - "data/causal_optimization_summary.txt" — integration summary.
 
+- "data/pricing_option_summary.csv" — budget-feasible discount options and selected option.
+- "src/causal/optimization.py" — analyzes discount options within the marketing budget.
+
 9. Current Integration Result
 
 The integration pipeline ran successfully and processed six discount-option records in the current output. These records demonstrate the integration workflow; they do not represent six real customers.
